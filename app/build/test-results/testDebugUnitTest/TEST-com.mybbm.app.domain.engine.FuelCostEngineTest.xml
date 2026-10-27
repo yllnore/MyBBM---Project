@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.mybbm.app.domain.engine.FuelCostEngineTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-27T03:12:14" hostname="DESKTOP-BFG6T5U" time="0.008">
+  <properties/>
+  <testcase name="validasiKonsumsiNol" classname="com.mybbm.app.domain.engine.FuelCostEngineTest" time="0.004"/>
+  <testcase name="validasiJarakNegatif" classname="com.mybbm.app.domain.engine.FuelCostEngineTest" time="0.0"/>
+  <testcase name="kasusUjiAcuan1" classname="com.mybbm.app.domain.engine.FuelCostEngineTest" time="0.002"/>
+  <testcase name="kasusUjiAcuan2" classname="com.mybbm.app.domain.engine.FuelCostEngineTest" time="0.0"/>
+  <testcase name="kasusUjiAcuan3" classname="com.mybbm.app.domain.engine.FuelCostEngineTest" time="0.0"/>
+  <testcase name="kasusUjiAcuan4" classname="com.mybbm.app.domain.engine.FuelCostEngineTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
