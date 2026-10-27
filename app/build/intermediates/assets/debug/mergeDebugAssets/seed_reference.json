@@ -1,0 +1,104 @@
+﻿{
+  "_comment": "Data seed referensi BBM untuk wilayah KALIMANTAN_TIMUR. Perbarui file ini dan tingkatkan DATABASE_VERSION setiap rilis jika harga berubah signifikan.",
+  "jenis_bbm": [
+    {
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000001",
+      "nama_bbm": "Pertalite",
+      "jenis_bahan_bakar": "BENSIN",
+      "is_active": true,
+      "updated_at": 1698307200000
+    },
+    {
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000002",
+      "nama_bbm": "Pertamax",
+      "jenis_bahan_bakar": "BENSIN",
+      "is_active": true,
+      "updated_at": 1698307200000
+    },
+    {
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000003",
+      "nama_bbm": "Pertamax Turbo",
+      "jenis_bahan_bakar": "BENSIN",
+      "is_active": true,
+      "updated_at": 1698307200000
+    },
+    {
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000004",
+      "nama_bbm": "Dexlite",
+      "jenis_bahan_bakar": "DIESEL",
+      "is_active": true,
+      "updated_at": 1698307200000
+    },
+    {
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000005",
+      "nama_bbm": "Pertamina Dex",
+      "jenis_bahan_bakar": "DIESEL",
+      "is_active": true,
+      "updated_at": 1698307200000
+    },
+    {
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000006",
+      "nama_bbm": "Biosolar",
+      "jenis_bahan_bakar": "DIESEL",
+      "is_active": true,
+      "updated_at": 1698307200000
+    }
+  ],
+  "harga_bbm": [
+    {
+      "_comment": "Ganti nilai harga_per_liter dengan harga resmi Pertamina yang berlaku untuk wilayah Kalimantan Timur sebelum rilis.",
+      "id_harga": "b1c2d3e4-0002-0002-0002-000000000001",
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000001",
+      "wilayah": "KALIMANTAN_TIMUR",
+      "harga_per_liter": "10000.00",
+      "berlaku_mulai": 1698307200000,
+      "berlaku_hingga": null,
+      "updated_at": 1698307200000
+    },
+    {
+      "id_harga": "b1c2d3e4-0002-0002-0002-000000000002",
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000002",
+      "wilayah": "KALIMANTAN_TIMUR",
+      "harga_per_liter": "12500.00",
+      "berlaku_mulai": 1698307200000,
+      "berlaku_hingga": null,
+      "updated_at": 1698307200000
+    },
+    {
+      "id_harga": "b1c2d3e4-0002-0002-0002-000000000003",
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000003",
+      "wilayah": "KALIMANTAN_TIMUR",
+      "harga_per_liter": "14000.00",
+      "berlaku_mulai": 1698307200000,
+      "berlaku_hingga": null,
+      "updated_at": 1698307200000
+    },
+    {
+      "id_harga": "b1c2d3e4-0002-0002-0002-000000000004",
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000004",
+      "wilayah": "KALIMANTAN_TIMUR",
+      "harga_per_liter": "13700.00",
+      "berlaku_mulai": 1698307200000,
+      "berlaku_hingga": null,
+      "updated_at": 1698307200000
+    },
+    {
+      "id_harga": "b1c2d3e4-0002-0002-0002-000000000005",
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000005",
+      "wilayah": "KALIMANTAN_TIMUR",
+      "harga_per_liter": "14950.00",
+      "berlaku_mulai": 1698307200000,
+      "berlaku_hingga": null,
+      "updated_at": 1698307200000
+    },
+    {
+      "id_harga": "b1c2d3e4-0002-0002-0002-000000000006",
+      "id_bbm": "a1b2c3d4-0001-0001-0001-000000000006",
+      "wilayah": "KALIMANTAN_TIMUR",
+      "harga_per_liter": "6800.00",
+      "berlaku_mulai": 1698307200000,
+      "berlaku_hingga": null,
+      "updated_at": 1698307200000
+    }
+  ]
+}
