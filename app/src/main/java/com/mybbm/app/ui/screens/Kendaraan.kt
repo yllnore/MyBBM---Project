@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,10 +21,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,17 +37,22 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
+import com.mybbm.app.viewmodel.BbmViewModel
+import com.mybbm.app.viewmodel.VehicleUiModel
 
 @Composable
 fun VehicleSettingsScreen(
-    onBackClick: () -> Unit = {},
-    onAddClick: () -> Unit = {},
-    onEditVehicleClick: (String) -> Unit = {}
+    viewModel: BbmViewModel,
+    onBackClick: () -> Unit = {}
 ) {
+    val vehicles by viewModel.vehicles.collectAsState()
+    var showAddDialog by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+    var newEfficiency by remember { mutableStateOf("") }
+
     // Outer Frame Canvas (412.dp x 917.dp)
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -59,9 +67,8 @@ fun VehicleSettingsScreen(
                     color = Color(0xFFCCC7FB),
                     shape = RoundedCornerShape(size = 27.dp)
                 )
-                .width(412.dp)
-                .height(917.dp)
-                .background(color = Color(0xFFECEBFF), shape = RoundedCornerShape(size = 27.dp))
+                .fillMaxSize()
+                .background(color = Color(0xFFECEBFF))
         ) {
             // Container Bagian Atas (Header Ungu)
             Column(
@@ -72,31 +79,13 @@ fun VehicleSettingsScreen(
                         shape = RoundedCornerShape(topStart = 27.dp, topEnd = 27.dp)
                     )
             ) {
-                // Status Bar (Jam & Indikator Sinyal/WiFi/Baterai)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.Start),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                    }
-                }
-
                 // Title Bar (Kembali, Judul "Kendaraan", & Tambah (+))
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .width(412.dp)
-                        .height(66.dp)
-                        .padding(start = 20.dp, end = 20.dp, bottom = 12.dp)
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 20.dp, top = 40.dp, bottom = 14.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -129,7 +118,7 @@ fun VehicleSettingsScreen(
                         tint = Color(0xFF090F59),
                         modifier = Modifier
                             .size(28.dp)
-                            .clickable { onAddClick() }
+                            .clickable { showAddDialog = true }
                     )
                 }
             }
@@ -139,59 +128,73 @@ fun VehicleSettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.Top),
                 horizontalAlignment = Alignment.Start,
                 modifier = Modifier
-                    .width(412.dp)
+                    .fillMaxWidth()
                     .padding(start = 19.dp, top = 20.dp, end = 20.dp, bottom = 20.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                // 1. AVANZA (Mobil)
-                VehicleCardItem(
-                    name = "AVANZA",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.mobil,
-                    onEditClick = { onEditVehicleClick("AVANZA") }
-                )
+                if (vehicles.isEmpty()) {
+                    Text(
+                        text = "Belum ada kendaraan yang ditambahkan.",
+                        style = TextStyle(color = Color(0xFF8271D4), fontSize = 14.sp)
+                    )
+                } else {
+                    vehicles.forEach { vehicle ->
+                        val isMotor = vehicle.type.contains("MOTOR", ignoreCase = true) ||
+                                vehicle.name.contains("BEAT", ignoreCase = true) ||
+                                vehicle.name.contains("VARIO", ignoreCase = true) ||
+                                vehicle.name.contains("MIO", ignoreCase = true)
 
-                // 2. TOYOTA (Mobil)
-                VehicleCardItem(
-                    name = "TOYOTA",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.mobil,
-                    onEditClick = { onEditVehicleClick("TOYOTA") }
-                )
-
-                // 3. HONDA (Mobil)
-                VehicleCardItem(
-                    name = "HONDA",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.mobil,
-                    onEditClick = { onEditVehicleClick("HONDA") }
-                )
-
-                // 4. HONDA BEAT (Motor)
-                VehicleCardItem(
-                    name = "HONDA BEAT",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.motor,
-                    onEditClick = { onEditVehicleClick("HONDA BEAT") }
-                )
-
-                // 5. HONDA VARIO (Motor)
-                VehicleCardItem(
-                    name = "HONDA VARIO",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.motor,
-                    onEditClick = { onEditVehicleClick("HONDA VARIO") }
-                )
-
-                // 6. NMAX (Motor)
-                VehicleCardItem(
-                    name = "NMAX",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.motor,
-                    onEditClick = { onEditVehicleClick("NMAX") }
-                )
+                        VehicleCardItem(
+                            name = vehicle.name.uppercase(),
+                            consumption = "${vehicle.fuelEfficiency} km/L",
+                            iconRes = if (isMotor) R.drawable.motor else R.drawable.mobil,
+                            onDeleteClick = { viewModel.deleteVehicle(vehicle) }
+                        )
+                    }
+                }
             }
         }
+    }
+
+    if (showAddDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddDialog = false },
+            title = { Text("Tambah Kendaraan Baru") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("Nama Kendaraan (cth: Avanza / Vario)") },
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = newEfficiency,
+                        onValueChange = { newEfficiency = it },
+                        label = { Text("Konsumsi BBM (km/L)") },
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val eff = newEfficiency.toDoubleOrNull()
+                    if (newName.isNotBlank() && eff != null && eff > 0) {
+                        viewModel.addVehicle(newName, "MOBIL", eff)
+                        newName = ""
+                        newEfficiency = ""
+                        showAddDialog = false
+                    }
+                }) {
+                    Text("Simpan")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 }
 
@@ -200,35 +203,34 @@ fun VehicleCardItem(
     name: String,
     consumption: String,
     iconRes: Int,
-    onEditClick: () -> Unit = {}
+    onDeleteClick: () -> Unit = {}
 ) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .shadow(
-                elevation = 3.dp,
-                spotColor = Color(0x166765AA),
-                ambientColor = Color(0x166765AA)
+                elevation = 2.dp,
+                shape = RoundedCornerShape(20.dp),
+                spotColor = Color(0x166765AA)
             )
             .border(
-                width = 1.7.dp,
+                width = 1.dp,
                 color = Color(0xFFCCC9F4),
-                shape = RoundedCornerShape(size = 21.dp)
+                shape = RoundedCornerShape(size = 20.dp)
             )
-            .width(373.dp)
-            .height(95.dp)
-            .background(color = Color(0xFFF1EFFF), shape = RoundedCornerShape(size = 21.dp))
-            .padding(start = 16.dp, end = 20.dp)
+            .fillMaxWidth()
+            .height(90.dp)
+            .background(color = Color(0xFFF1EFFF), shape = RoundedCornerShape(size = 20.dp))
+            .padding(start = 16.dp, end = 16.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Box Ungu Muda untuk Ikon Kendaraan
             Box(
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(56.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color(0xFFBDB8F8)),
                 contentAlignment = Alignment.Center
@@ -237,14 +239,11 @@ fun VehicleCardItem(
                     painter = painterResource(id = iconRes),
                     contentDescription = name,
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(34.dp)
                 )
             }
 
-            // Teks Nama Kendaraan & Konsumsi BBM
-            Column(
-                verticalArrangement = Arrangement.Center
-            ) {
+            Column {
                 Text(
                     text = name,
                     style = TextStyle(
@@ -254,32 +253,25 @@ fun VehicleCardItem(
                         color = Color(0xFF090F59)
                     )
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = consumption,
                     style = TextStyle(
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
                         fontFamily = FontFamily.Default,
                         fontWeight = FontWeight(500),
-                        color = Color(0xFF090F59)
+                        color = Color(0xFF9184DD)
                     )
                 )
             }
         }
 
-        // Icon Pensil Edit
-        Icon(
-            imageVector = Icons.Outlined.Edit,
-            contentDescription = "Edit $name",
-            tint = Color(0xFF090F59),
+        Image(
+            painter = painterResource(id = R.drawable.hapus),
+            contentDescription = "Hapus",
             modifier = Modifier
-                .size(20.dp)
-                .clickable { onEditClick() }
+                .size(24.dp)
+                .clickable { onDeleteClick() }
         )
     }
-}
-
-@Preview(showBackground = true, widthDp = 412, heightDp = 917)
-@Composable
-fun VehicleSettingsScreenPreview() {
-    VehicleSettingsScreen()
 }
