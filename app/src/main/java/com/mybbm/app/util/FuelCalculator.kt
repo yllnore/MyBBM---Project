@@ -1,35 +1,44 @@
 package com.mybbm.app.util
 
-import java.text.NumberFormat
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import java.util.Locale
 
-/**
- * Utilitas helper untuk formatting angka ke mata uang Rupiah, liter, dan jarak.
- */
 object FuelCalculator {
 
-    fun calculateLiters(distanceKm: Double, efficiencyKmPerL: Double): Double {
-        if (efficiencyKmPerL <= 0.0) return 0.0
-        return distanceKm / efficiencyKmPerL
+    fun calculateFuelNeeded(distanceKm: BigDecimal, efficiencyKmPerLiter: BigDecimal): BigDecimal {
+        if (efficiencyKmPerLiter <= BigDecimal.ZERO) return BigDecimal.ZERO
+        return distanceKm.divide(efficiencyKmPerLiter, 2, RoundingMode.HALF_UP)
     }
 
-    fun calculateCost(liters: Double, pricePerLiter: Double): Double {
-        if (liters <= 0.0 || pricePerLiter <= 0.0) return 0.0
-        return liters * pricePerLiter
+    fun calculateTotalCost(liters: BigDecimal, pricePerLiter: BigDecimal): BigDecimal {
+        return (liters.multiply(pricePerLiter)).setScale(0, RoundingMode.HALF_UP)
     }
 
-    fun formatRupiah(amount: Double): String {
-        val localeID = Locale.Builder().setLanguage("id").setRegion("ID").build()
-        val formatter = NumberFormat.getCurrencyInstance(localeID)
-        formatter.maximumFractionDigits = 0
-        return formatter.format(amount).replace("IDR", "Rp").replace("Rp", "Rp ")
+    fun formatRupiah(amount: BigDecimal): String {
+        val symbols = DecimalFormatSymbols(Locale("id", "ID")).apply {
+            groupingSeparator = '.'
+            decimalSeparator = ','
+        }
+        val formatter = DecimalFormat("#,###", symbols)
+        return "Rp. " + formatter.format(amount.toLong())
     }
 
-    fun formatLiters(liters: Double): String {
-        return String.format(Locale.getDefault(), "%.2f Liter", liters)
+    fun formatLiters(liters: BigDecimal): String {
+        val symbols = DecimalFormatSymbols(Locale("id", "ID")).apply {
+            decimalSeparator = ','
+        }
+        val formatter = DecimalFormat("0.#", symbols)
+        return "${formatter.format(liters)} Liter"
     }
 
-    fun formatDistance(distanceKm: Double): String {
-        return String.format(Locale.getDefault(), "%.1f km", distanceKm)
+    fun formatDistance(km: BigDecimal): String {
+        val symbols = DecimalFormatSymbols(Locale("id", "ID")).apply {
+            decimalSeparator = ','
+        }
+        val formatter = DecimalFormat("0.#", symbols)
+        return "${formatter.format(km)} km"
     }
 }

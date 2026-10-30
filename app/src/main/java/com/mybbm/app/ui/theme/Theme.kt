@@ -1,47 +1,38 @@
 package com.mybbm.app.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = DarkGreenPrimary,
-    secondary = DarkGreenSecondary,
-    background = DarkBackground,
-    surface = DarkSurface,
-    onSurface = DarkOnSurface
+    primary = MyBbmPrimaryPurple,
+    secondary = PurpleGrey80,
+    tertiary = Pink80,
+    background = Color(0xFF1C1B1F),
+    surface = Color(0xFF1C1B1F)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = GreenPrimary,
-    secondary = GreenSecondary,
-    background = GreenBackground,
-    surface = SurfaceColor,
-    onSurface = OnSurfaceColor
+    primary = MyBbmPrimaryPurple,
+    secondary = MyBbmDarkNavy,
+    tertiary = Pink40,
+    background = Color(0xFFFBFBFE),
+    surface = Color(0xFFFFFFFF),
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onBackground = MyBbmTextNavy,
+    onSurface = MyBbmTextNavy
 )
 
 @Composable
-fun MYBBMTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Disabled by default to keep brand green identity
+fun MyBBMTheme(
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme = LightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,

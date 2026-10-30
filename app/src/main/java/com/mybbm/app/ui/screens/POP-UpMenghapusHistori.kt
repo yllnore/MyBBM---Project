@@ -1,4 +1,4 @@
-package com.mybbm.app.ui.components
+package com.mybbm.app.ui.screens
 
 import com.mybbm.app.R
 import androidx.compose.foundation.background

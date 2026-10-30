@@ -103,6 +103,10 @@ dependencies {
     // OkHttp Client (untuk Google Directions API)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // Google Maps Compose & Location
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.location)
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

@@ -31,14 +31,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun MemasukkanLokasiTujuanScreen() {
+fun MemasukkanLokasiTujuanScreen(
+    onLocationSelected: (String) -> Unit = {},
+    onBackClick: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(color = Color(0xFFE3E7E7))
     ) {
         // Space mengintip area Map di paling atas
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(
+            modifier = Modifier
+                .height(32.dp)
+                .clickable { onBackClick() }
+        )
 
         // Card Container Utama Bottom Sheet (Warna Ungu Full Ke Bawah)
         Column(
@@ -67,6 +74,7 @@ fun MemasukkanLokasiTujuanScreen() {
                         color = Color(0xFF7289D2),
                         shape = RoundedCornerShape(size = 3.dp)
                     )
+                    .clickable { onBackClick() }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -233,7 +241,7 @@ fun MemasukkanLokasiTujuanScreen() {
             // Garis Pembatas Utama Sesuai Figma
             Divider(color = Color(0xFF000000), thickness = 1.dp)
 
-            // Lista Hasil Pencarian / Autocomplete Dropdown
+            // Daftar Hasil Pencarian / Autocomplete Dropdown
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -242,28 +250,32 @@ fun MemasukkanLokasiTujuanScreen() {
                 // Item 1: Balikpapan
                 LokasiSearchResultItem(
                     title = "Balikpapan",
-                    subtitle = "Kota Balikpapan, Kalimantan Timur, Indonesia"
+                    subtitle = "Kota Balikpapan, Kalimantan Timur, Indonesia",
+                    onClick = { onLocationSelected("Balikpapan") }
                 )
                 Divider(color = Color(0xFF000000), thickness = 1.dp)
 
                 // Item 2: Balikpapan Kota
                 LokasiSearchResultItem(
                     title = "Balikpapan Kota",
-                    subtitle = "Kota Balikpapan, Kalimantan Timur, Indonesia"
+                    subtitle = "Kota Balikpapan, Kalimantan Timur, Indonesia",
+                    onClick = { onLocationSelected("Balikpapan Kota") }
                 )
                 Divider(color = Color(0xFF000000), thickness = 1.dp)
 
                 // Item 3: Balikpapan Superblock (BSB)
                 LokasiSearchResultItem(
                     title = "Balikpapan Superblock (BSB)",
-                    subtitle = "Jalan Jenderal Sudirman, Gunung Bahagia, Kota Balikpapan, \nKalimantan Timur, Indonesia"
+                    subtitle = "Jalan Jenderal Sudirman, Gunung Bahagia, Kota Balikpapan, \nKalimantan Timur, Indonesia",
+                    onClick = { onLocationSelected("Balikpapan Superblock (BSB)") }
                 )
                 Divider(color = Color(0xFF000000), thickness = 1.dp)
 
                 // Item 4: Balikpapan Selatan
                 LokasiSearchResultItem(
                     title = "Balikpapan Selatan",
-                    subtitle = "Kota Balikpapan, Kalimantan Timur, Indonesia"
+                    subtitle = "Kota Balikpapan, Kalimantan Timur, Indonesia",
+                    onClick = { onLocationSelected("Balikpapan Selatan") }
                 )
                 Divider(color = Color(0xFF000000), thickness = 1.dp)
             }

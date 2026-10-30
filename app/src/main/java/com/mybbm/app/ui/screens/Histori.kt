@@ -1,15 +1,24 @@
 package com.mybbm.app.ui.screens
 
-import androidx.compose.foundation.Image
+import com.mybbm.app.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Icon
@@ -26,19 +35,20 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mybbm.app.R
 import com.mybbm.app.util.FuelCalculator
 import com.mybbm.app.viewmodel.BbmViewModel
-import com.mybbm.app.viewmodel.HistoryUiModel
 
 @Composable
 fun HistoriScreen(
-    viewModel: BbmViewModel,
-    onCloseClick: () -> Unit = {}
+    onCloseClick: () -> Unit = {},
+    viewModel: BbmViewModel? = null
 ) {
-    val historyList by viewModel.history.collectAsState()
+    val histories by (viewModel?.histories?.collectAsState() ?: androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(emptyList())
+    })
 
     Column(
         modifier = Modifier
@@ -61,7 +71,7 @@ fun HistoriScreen(
                         text = "Perjalanan Sebelumnya",
                         style = TextStyle(
                             fontSize = 22.sp,
-                            fontFamily = FontFamily.Default,
+                            fontFamily = FontFamily(Font(R.font.roboto_regular)),
                             fontWeight = FontWeight(700),
                             color = Color(0xFF090F59)
                         )
@@ -71,7 +81,7 @@ fun HistoriScreen(
                         text = "Pick up where you left off",
                         style = TextStyle(
                             fontSize = 14.sp,
-                            fontFamily = FontFamily.Default,
+                            fontFamily = FontFamily(Font(R.font.roboto_regular)),
                             fontWeight = FontWeight(500),
                             color = Color(0xFF8271D4)
                         )
@@ -108,26 +118,34 @@ fun HistoriScreen(
                 )
                 .padding(horizontal = 16.dp, vertical = 20.dp)
         ) {
-            if (historyList.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Belum ada riwayat perjalanan tersimpan.",
-                        style = TextStyle(
-                            fontSize = 15.sp,
-                            color = Color(0xFF8271D4)
+            if (histories.isEmpty()) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(6) {
+                        HistoriCardItem(
+                            routeText = "POLNES → Balikpapan Superblock",
+                            detailText = "115 km · Rp 95.000",
+                            onDeleteClick = {
+                                viewModel?.showDeleteHistoryDialog?.value = true
+                            }
                         )
-                    )
+                    }
                 }
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(historyList) { item: HistoryUiModel ->
+                    items(histories) { item ->
                         HistoriCardItem(
-                            routeText = "${item.originName} → ${item.destinationName}",
-                            detailText = "${item.vehicleName} · ${FuelCalculator.formatRupiah(item.totalCost)}",
-                            onDeleteClick = { viewModel.deleteHistoryItem(item) }
+                            routeText = "${item.origin} → ${item.destination}",
+                            detailText = "${FuelCalculator.formatDistance(item.distanceKm)} · ${FuelCalculator.formatRupiah(item.totalCost)}",
+                            onDeleteClick = {
+                                viewModel?.historyToDelete?.value = item
+                                viewModel?.showDeleteHistoryDialog?.value = true
+                            }
                         )
                     }
                 }
@@ -188,17 +206,18 @@ fun HistoriCardItem(
                 text = routeText,
                 style = TextStyle(
                     fontSize = 14.sp,
-                    fontFamily = FontFamily.Default,
+                    fontFamily = FontFamily(Font(R.font.roboto_regular)),
                     fontWeight = FontWeight(600),
                     color = Color(0xFF090F59)
-                )
+                ),
+                maxLines = 1
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = detailText,
                 style = TextStyle(
                     fontSize = 12.sp,
-                    fontFamily = FontFamily.Default,
+                    fontFamily = FontFamily(Font(R.font.roboto_regular)),
                     fontWeight = FontWeight(400),
                     color = Color(0xFF9184DD)
                 )
@@ -216,12 +235,19 @@ fun HistoriCardItem(
                 )
         ) {
             IconButton(onClick = onDeleteClick) {
-                Image(
+                Icon(
                     painter = painterResource(id = R.drawable.hapus),
                     contentDescription = "Hapus Histori",
-                    modifier = Modifier.size(22.dp)
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(35.dp)
                 )
             }
         }
     }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun HistoriScreenPreview() {
+    HistoriScreen()
 }

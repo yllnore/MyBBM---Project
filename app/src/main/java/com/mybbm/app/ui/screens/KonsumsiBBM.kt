@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -22,6 +24,8 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,13 +40,21 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
+import com.mybbm.app.domain.model.FuelModel
+import com.mybbm.app.util.FuelCalculator
+import com.mybbm.app.viewmodel.BbmViewModel
 
 @Composable
 fun BbmSettingsScreen(
     onBackClick: () -> Unit = {},
     onAddClick: () -> Unit = {},
-    onEditBbmClick: (String) -> Unit = {}
+    onEditBbmClick: (String) -> Unit = {},
+    viewModel: BbmViewModel? = null
 ) {
+    val fuels by (viewModel?.fuels?.collectAsState() ?: androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(emptyList())
+    })
+
     // Canvas Luar Screen
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -57,8 +69,7 @@ fun BbmSettingsScreen(
                     color = Color(0xFFCCC7FB),
                     shape = RoundedCornerShape(size = 27.dp)
                 )
-                .width(412.dp)
-                .height(917.dp)
+                .fillMaxSize()
                 .background(color = Color(0xFFECEBFF), shape = RoundedCornerShape(size = 27.dp))
         ) {
             // Header Ungu (Tombol Back, Judul BBM, & Tombol Plus +)
@@ -70,7 +81,7 @@ fun BbmSettingsScreen(
                         shape = RoundedCornerShape(topStart = 27.dp, topEnd = 27.dp)
                     )
             ) {
-                // Status Bar (Sinyal, Jam, Baterai)
+                // Status Bar / Spacer
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -78,7 +89,6 @@ fun BbmSettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                 }
 
                 // Title Bar
@@ -86,7 +96,7 @@ fun BbmSettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .width(412.dp)
+                        .fillMaxWidth()
                         .height(66.dp)
                         .padding(start = 20.dp, end = 20.dp, bottom = 12.dp)
                 ) {
@@ -94,7 +104,7 @@ fun BbmSettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Icon Back Vector Bawaan Compose
+                        // Icon Back
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -122,7 +132,13 @@ fun BbmSettingsScreen(
                         tint = Color(0xFF090F59),
                         modifier = Modifier
                             .size(28.dp)
-                            .clickable { onAddClick() }
+                            .clickable {
+                                if (viewModel != null) {
+                                    viewModel.showAddFuelDialog.value = true
+                                } else {
+                                    onAddClick()
+                                }
+                            }
                     )
                 }
             }
@@ -132,40 +148,54 @@ fun BbmSettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(19.dp, Alignment.Top),
                 horizontalAlignment = Alignment.Start,
                 modifier = Modifier
-                    .width(412.dp)
-                    .padding(start = 19.dp, top = 27.dp, end = 20.dp)
+                    .fillMaxWidth()
+                    .padding(start = 19.dp, top = 27.dp, end = 20.dp, bottom = 20.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                // 1. PERTALITE
-                BbmCardItem(
-                    name = "PERTALITE",
-                    price = "RpXX.XXX",
-                    iconRes = R.drawable.pertalite,
-                    onEditClick = { onEditBbmClick("PERTALITE") }
-                )
-
-                // 2. PERTAMAX
-                BbmCardItem(
-                    name = "PERTAMAX",
-                    price = "RpXX.XXX",
-                    iconRes = R.drawable.pertamax,
-                    onEditClick = { onEditBbmClick("PERTAMAX") }
-                )
-
-                // 3. PERTAMAX TURBO
-                BbmCardItem(
-                    name = "PERTAMAX TURBO",
-                    price = "RpXX.XXX",
-                    iconRes = R.drawable.pertamax_turbo,
-                    onEditClick = { onEditBbmClick("PERTAMAX TURBO") }
-                )
-
-                // 4. SOLAR
-                BbmCardItem(
-                    name = "SOLAR",
-                    price = "RpXX.XXX",
-                    iconRes = R.drawable.solar,
-                    onEditClick = { onEditBbmClick("SOLAR") }
-                )
+                if (fuels.isEmpty()) {
+                    // Default fallback visual sesuai Figma
+                    BbmCardItem(
+                        name = "PERTALITE",
+                        price = "Rp 10.000",
+                        iconRes = R.drawable.pertalite,
+                        onEditClick = { onEditBbmClick("PERTALITE") }
+                    )
+                    BbmCardItem(
+                        name = "PERTAMAX",
+                        price = "Rp 12.500",
+                        iconRes = R.drawable.pertamax,
+                        onEditClick = { onEditBbmClick("PERTAMAX") }
+                    )
+                    BbmCardItem(
+                        name = "PERTAMAX TURBO",
+                        price = "Rp 13.800",
+                        iconRes = R.drawable.pertamax_turbo,
+                        onEditClick = { onEditBbmClick("PERTAMAX TURBO") }
+                    )
+                    BbmCardItem(
+                        name = "SOLAR",
+                        price = "Rp 6.800",
+                        iconRes = R.drawable.solar,
+                        onEditClick = { onEditBbmClick("SOLAR") }
+                    )
+                } else {
+                    fuels.forEach { fuel ->
+                        val iconRes = fuel.iconResId ?: R.drawable.pertamax
+                        BbmCardItem(
+                            name = fuel.name,
+                            price = "${FuelCalculator.formatRupiah(fuel.pricePerLiter)} / Liter",
+                            iconRes = iconRes,
+                            onEditClick = {
+                                if (viewModel != null) {
+                                    viewModel.fuelToEditOrDelete.value = fuel
+                                    viewModel.showEditFuelDialog.value = true
+                                } else {
+                                    onEditBbmClick(fuel.name)
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -192,7 +222,7 @@ fun BbmCardItem(
                 color = Color(0xFFCCC9F4),
                 shape = RoundedCornerShape(size = 21.dp)
             )
-            .width(373.dp)
+            .fillMaxWidth()
             .height(95.dp)
             .background(color = Color(0xFFF1EFFF), shape = RoundedCornerShape(size = 21.dp))
             .padding(start = 16.dp, end = 20.dp)
@@ -201,6 +231,7 @@ fun BbmCardItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Box Ungu Muda Ikon BBM
             Box(
                 modifier = Modifier
                     .size(64.dp)
@@ -216,6 +247,7 @@ fun BbmCardItem(
                 )
             }
 
+            // Nama & Harga BBM
             Column(
                 verticalArrangement = Arrangement.Center
             ) {
@@ -240,6 +272,7 @@ fun BbmCardItem(
             }
         }
 
+        // Icon Pensil Edit
         Icon(
             imageVector = Icons.Outlined.Edit,
             contentDescription = "Edit $name",
