@@ -1,202 +1,226 @@
 package com.mybbm.app.ui.screens
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.mybbm.app.R // Import file gambar R milik aplikasi Anda
 import com.mybbm.app.viewmodel.BbmViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onCalculateClick: () -> Unit = {},
     viewModel: BbmViewModel,
     onNavigateToResult: () -> Unit
 ) {
-    val origin by viewModel.originText.collectAsState()
-    val destination by viewModel.destinationText.collectAsState()
-    val vehicles by viewModel.vehicles.collectAsState()
-    val fuelPrices by viewModel.fuelPrices.collectAsState()
-    val selectedVehicle by viewModel.selectedVehicle.collectAsState()
-    val selectedFuelPrice by viewModel.selectedFuelPrice.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-
-    var vehicleExpanded by remember { mutableStateOf(false) }
-    var fuelExpanded by remember { mutableStateOf(false) }
-    val scrollState = rememberScrollState()
-
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    // 1. Root Container
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF5F5F5)) // Background abu-abu sementara
     ) {
+
+        // KOMPONEN MAP ASLI NANTINYA BISA DITARUH DI SINI
+        // GoogleMap(...)
+
+        // 2. Tombol Mengambang di Kanan Atas (FABs)
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .align(Alignment.TopEnd)
+                .padding(top = 40.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "🚗 MYBBM - Kalkulator Perjalanan",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Hitung estimasi BBM & biaya perjalanan Anda di Kalimantan Timur.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
+            FloatingMapAction(iconResId = R.drawable.settings_icon)
+            FloatingMapAction(iconResId = R.drawable.history)
+            FloatingMapAction(iconResId = R.drawable.current_location_icon)
+        }
 
-            // Location Input Section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(text = "Rute Perjalanan", style = MaterialTheme.typography.titleSmall)
-
-                    OutlinedTextField(
-                        value = origin,
-                        onValueChange = { viewModel.originText.value = it },
-                        label = { Text("Lokasi Asal (Cth: Samarinda)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        IconButton(onClick = { viewModel.swapLocations() }) {
-                            Icon(Icons.Default.SwapVert, contentDescription = "Tukar Lokasi")
-                        }
-                    }
-
-                    OutlinedTextField(
-                        value = destination,
-                        onValueChange = { viewModel.destinationText.value = it },
-                        label = { Text("Lokasi Tujuan (Cth: Balikpapan)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                }
-            }
-
-            // Vehicle & Fuel Selection Section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(text = "Kendaraan & Bahan Bakar", style = MaterialTheme.typography.titleSmall)
-
-                    // Vehicle Dropdown
-                    ExposedDropdownMenuBox(
-                        expanded = vehicleExpanded,
-                        onExpandedChange = { vehicleExpanded = !vehicleExpanded }
-                    ) {
-                        OutlinedTextField(
-                            value = selectedVehicle?.let { "${it.name} (${it.fuelEfficiency} km/L)" } ?: "Pilih Kendaraan",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Kendaraan") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = vehicleExpanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = vehicleExpanded,
-                            onDismissRequest = { vehicleExpanded = false }
-                        ) {
-                            vehicles.forEach { vehicle ->
-                                DropdownMenuItem(
-                                    text = { Text("${vehicle.name} — ${vehicle.fuelEfficiency} km/L") },
-                                    onClick = {
-                                        viewModel.selectedVehicle.value = vehicle
-                                        vehicleExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Fuel Type Dropdown
-                    ExposedDropdownMenuBox(
-                        expanded = fuelExpanded,
-                        onExpandedChange = { fuelExpanded = !fuelExpanded }
-                    ) {
-                        OutlinedTextField(
-                            value = selectedFuelPrice?.let { "${it.fuelType} (Rp${it.pricePerLiter.toInt()}/L)" } ?: "Pilih BBM",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Jenis BBM") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = fuelExpanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = fuelExpanded,
-                            onDismissRequest = { fuelExpanded = false }
-                        ) {
-                            fuelPrices.forEach { fuel ->
-                                DropdownMenuItem(
-                                    text = { Text("${fuel.fuelType} — Rp${fuel.pricePerLiter.toInt()}/L") },
-                                    onClick = {
-                                        viewModel.selectedFuelPrice.value = fuel
-                                        fuelExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (!errorMessage.isNullOrEmpty()) {
-                Text(
-                    text = errorMessage ?: "",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
+        // 3. Panel Input Perjalanan (Bottom Sheet)
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .shadow(
+                    elevation = 24.dp,
+                    spotColor = Color(0x40000000),
+                    ambientColor = Color(0x40000000),
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 )
+                .background(
+                    color = Color(0xFFC0BEF8), // Warna ungu muda
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                )
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Garis Handle (Drag Handle)
+            Box(
+                modifier = Modifier
+                    .width(40.dp)
+                    .height(4.dp)
+                    .background(
+                        color = Color(0xFF7289D2),
+                        shape = RoundedCornerShape(2.dp)
+                    )
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Form Input
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Input Lokasi Awal
+                LocationInputField(
+                    placeholder = "Lokasi Awal",
+                    iconResId = R.drawable.lokasi_awal
+                )
+
+                // Input Lokasi Tujuan
+                LocationInputField(
+                    placeholder = "Lokasi Tujuan",
+                    iconResId = R.drawable.lokasi_tujuan
+                )
+
+                // Input Pilihan
+                SelectionInputField(placeholder = "Pilih Kendaraan")
+                SelectionInputField(placeholder = "Jenis BBM")
             }
 
-            // Calculate Button
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Tombol Hitung Biaya
             Button(
-                onClick = {
-                    viewModel.calculateTrip {
-                        onNavigateToResult()
-                    }
-                },
-                enabled = !isLoading,
+                onClick = onCalculateClick,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7542EF)),
+                shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
+                    .height(50.dp)
+                    .shadow(
+                        elevation = 8.dp,
+                        spotColor = Color(0x5544308D),
+                        shape = RoundedCornerShape(24.dp)
                     )
-                } else {
-                    Text(text = "Hitung Biaya BBM", style = MaterialTheme.typography.titleMedium)
-                }
+            ) {
+                Text(
+                    text = "Hitung Biaya Perjalanan",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontFamily = FontFamily.Default,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
+                    )
+                )
             }
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
+}
+
+// Sub-komponen Input Lokasi
+@Composable
+private fun LocationInputField(
+    placeholder: String,
+    iconResId: Int
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .background(color = Color(0xFFDFE6F9), shape = RoundedCornerShape(8.dp))
+            .border(width = 1.dp, color = Color(0xFF303B65), shape = RoundedCornerShape(8.dp))
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = placeholder,
+            style = TextStyle(
+                fontSize = 15.sp,
+                color = Color(0xFF11133E)
+            )
+        )
+        Image(
+            painter = painterResource(id = iconResId),
+            contentDescription = placeholder,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+// Sub-komponen Input Seleksi (Dropdown)
+@Composable
+private fun SelectionInputField(
+    placeholder: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .background(color = Color(0xFFDFE6F9), shape = RoundedCornerShape(8.dp))
+            .border(width = 1.dp, color = Color(0xFF303B65), shape = RoundedCornerShape(8.dp))
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = placeholder,
+            style = TextStyle(
+                fontSize = 15.sp,
+                color = Color(0xFF11133E)
+            )
+        )
+    }
+}
+
+// Sub-komponen Tombol Melayang di Map
+@Composable
+private fun FloatingMapAction(iconResId: Int) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .shadow(6.dp, CircleShape)
+            .background(Color(0xFFC0BEF8), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(id = iconResId),
+            contentDescription = "Map Action",
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Preview(showSystemUi = true, device = "spec:width=412dp,height=917dp,dpi=440")
+@Composable
+fun HomeScreenPreview() {
+    // Karena Preview tidak bisa menjalankan ViewModel asli,
+    // kita berikan nilai "null" atau mock sementara jika memungkinkan.
+    // Jika BbmViewModel wajib ada, Anda bisa memanggilnya seperti di bawah ini,
+    // asalkan Anda meng-import viewModel-nya.
+
+    HomeScreen(
+        onCalculateClick = {},
+        viewModel = androidx.lifecycle.viewmodel.compose.viewModel(), // Menggunakan dummy ViewModel untuk Preview
+        onNavigateToResult = {}
+    )
 }
