@@ -1,0 +1,199 @@
+package com.mybbm.app.ui.screens
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.mybbm.app.R
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            CustomMainScreen()
+        }
+    }
+}
+
+@Composable
+fun CustomMainScreen() {
+    Box(
+        modifier = Modifier
+            .width(412.dp)
+            .height(917.dp)
+            .background(color = Color(0xFFFFFFFF)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(0.dp, Alignment.Top),
+            horizontalAlignment = Alignment.Start,
+            modifier = Modifier
+                .shadow(
+                    elevation = 16.dp,
+                    spotColor = Color(0x4051667B),
+                    ambientColor = Color(0x4051667B)
+                )
+                .width(412.dp)
+                .height(917.dp)
+                .background(
+                    color = Color(0xFFE3E7E7),
+                    shape = RoundedCornerShape(size = 29.dp)
+                )
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(0.dp, Alignment.Top),
+                horizontalAlignment = Alignment.Start,
+                modifier = Modifier
+                    .width(412.dp)
+                    .height(917.dp) // Mengubah tinggi menjadi 917.dp agar menutup ke bawah
+                    .background(
+                        color = Color(0xFFBDB8F8),
+                        shape = RoundedCornerShape(size = 29.dp) // Mengubah lengkungan sudut menjadi 29.dp
+                    )
+                    .padding(start = 19.dp, top = 10.dp, end = 19.dp, bottom = 34.dp)
+            ) {
+                // Drag Handle
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .width(40.dp)
+                        .height(4.dp)
+                        .background(
+                            color = Color(0x6651667B),
+                            shape = RoundedCornerShape(2.dp)
+                        )
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Input Fields
+                CustomInputField(text = "POLNES - Politeknik Negeri Samarinda")
+                Spacer(modifier = Modifier.height(12.dp))
+                CustomInputField(text = "Balikpapan")
+                Spacer(modifier = Modifier.height(12.dp))
+                CustomInputField(text = "Honda")
+                Spacer(modifier = Modifier.height(12.dp))
+                CustomInputField(text = "Jenis BBM")
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Tombol Hitung Biaya Perjalanan
+                Button(
+                    onClick = { },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF7043EC)
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .width(374.dp)
+                        .height(48.dp)
+                        .shadow(4.dp, RoundedCornerShape(20.dp))
+                ) {
+                    Text(
+                        text = "Hitung Biaya Perjalanan",
+                        style = TextStyle(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight(600),
+                            color = Color.White
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Pembatas Garis Horizontal
+                Box(
+                    modifier = Modifier
+                        .padding(0.dp)
+                        .width(413.dp)
+                        .height(1.dp)
+                        .background(color = Color(0xFF000000))
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Baris Icon Mobil & Teks "Honda"
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.mobil),
+                        contentDescription = "Car Icon",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(36.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Text(
+                        text = "Honda",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontFamily = FontFamily.Default,
+                            fontWeight = FontWeight(700),
+                            color = Color(0xFF11133E)
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CustomInputField(text: String) {
+    Box(
+        modifier = Modifier
+            .width(374.dp)
+            .height(48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFD3E3FD))
+            .border(1.dp, Color(0xFF51667B), RoundedCornerShape(8.dp))
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Text(
+            text = text,
+            style = TextStyle(
+                fontSize = 14.sp,
+                color = Color(0xFF1F1F1F)
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 917)
+@Composable
+fun CustomMainScreenPreview() {
+    CustomMainScreen()
+}
