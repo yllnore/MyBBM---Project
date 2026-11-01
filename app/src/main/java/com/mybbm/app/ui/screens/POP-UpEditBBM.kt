@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.domain.model.FuelModel
+import com.mybbm.app.util.FuelCalculator
 import java.math.BigDecimal
 
 @Composable
@@ -44,12 +45,16 @@ fun EditBbmDialog(
     onDeleteClick: () -> Unit = {}
 ) {
     var nameInput by remember(fuel) { mutableStateOf(fuel?.name ?: "") }
-    var priceInput by remember(fuel) { mutableStateOf(fuel?.pricePerLiter?.toPlainString() ?: "") }
+    var priceInput by remember(fuel) {
+        mutableStateOf(
+            fuel?.pricePerLiter?.let { FuelCalculator.formatThousand(it) } ?: ""
+        )
+    }
 
     Box(
         modifier = Modifier
-            .width(256.dp)
-            .height(190.dp)
+            .width(320.dp)
+            .height(270.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
@@ -59,22 +64,22 @@ fun EditBbmDialog(
                 color = Color(0xFFF1EFFF),
                 shape = RoundedCornerShape(16.dp)
             )
-            .padding(vertical = 12.dp),
+            .padding(vertical = 18.dp, horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
         ) {
             // Header: Judul Dialog + Icon Hapus
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Edit Detail BBM",
                     style = TextStyle(
-                        fontSize = 16.sp,
+                        fontSize = 18.sp,
                         fontFamily = FontFamily.Default,
                         fontWeight = FontWeight(700),
                         color = Color(0xFF090F59)
@@ -86,7 +91,7 @@ fun EditBbmDialog(
                     contentDescription = "Hapus BBM",
                     tint = Color(0xFF8271D4),
                     modifier = Modifier
-                        .size(20.dp)
+                        .size(24.dp)
                         .clickable { onDeleteClick() }
                 )
             }
@@ -96,23 +101,23 @@ fun EditBbmDialog(
                 value = nameInput,
                 onValueChange = { nameInput = it },
                 placeholder = "Nama Jenis BBM",
-                heightDp = 32.dp
+                heightDp = 38.dp
             )
 
-            // Input Field 2: Harga BBM per Liter
+            // Input Field 2: Harga BBM per Liter (Otomatis format ribuan titik seperti 10.000)
             DialogInputField(
                 value = priceInput,
-                onValueChange = { priceInput = it },
+                onValueChange = { priceInput = FuelCalculator.formatDigitsAsThousand(it) },
                 placeholder = "Harga BBM per Liter",
-                heightDp = 32.dp,
+                heightDp = 38.dp,
                 keyboardType = KeyboardType.Number
             )
 
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Baris Tombol Simpan & Batal
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Tombol Simpan (Biru)
@@ -124,14 +129,14 @@ fun EditBbmDialog(
                             ambientColor = Color(0x40000000),
                             shape = RoundedCornerShape(16.dp)
                         )
-                        .width(95.dp)
-                        .height(30.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFF5DB1E7),
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable {
-                            val price = priceInput.toBigDecimalOrNull() ?: fuel?.pricePerLiter ?: BigDecimal("10000")
+                            val price = FuelCalculator.parseThousand(priceInput) ?: fuel?.pricePerLiter ?: BigDecimal("10000")
                             val id = fuel?.id ?: ""
                             onSimpanClick(id, nameInput, price)
                         },
@@ -140,7 +145,7 @@ fun EditBbmDialog(
                     Text(
                         text = "Simpan",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFFFFFFFF)
@@ -157,8 +162,8 @@ fun EditBbmDialog(
                             ambientColor = Color(0x40000000),
                             shape = RoundedCornerShape(16.dp)
                         )
-                        .width(95.dp)
-                        .height(30.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFFE6E6E6),
                             shape = RoundedCornerShape(16.dp)
@@ -169,7 +174,7 @@ fun EditBbmDialog(
                     Text(
                         text = "Batal",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFF090F59)

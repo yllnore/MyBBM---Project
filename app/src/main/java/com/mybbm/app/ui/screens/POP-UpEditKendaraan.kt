@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.domain.model.VehicleModel
+import com.mybbm.app.util.FuelCalculator
 import java.math.BigDecimal
 
 @Composable
@@ -45,12 +46,16 @@ fun EditVehicleDialog(
 ) {
     var nameInput by remember(vehicle) { mutableStateOf(vehicle?.name ?: "") }
     var typeInput by remember(vehicle) { mutableStateOf(vehicle?.type ?: "Mobil") }
-    var efficiencyInput by remember(vehicle) { mutableStateOf(vehicle?.fuelEfficiency?.toPlainString() ?: "") }
+    var efficiencyInput by remember(vehicle) {
+        mutableStateOf(
+            vehicle?.fuelEfficiency?.let { FuelCalculator.formatEfficiency(it) } ?: ""
+        )
+    }
 
     Box(
         modifier = Modifier
-            .width(256.dp)
-            .height(210.dp)
+            .width(320.dp)
+            .height(270.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
@@ -60,22 +65,22 @@ fun EditVehicleDialog(
                 color = Color(0xFFF1EFFF),
                 shape = RoundedCornerShape(16.dp)
             )
-            .padding(vertical = 12.dp),
+            .padding(vertical = 18.dp, horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
         ) {
             // Header: Judul Dialog + Icon Hapus
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Edit Detail Kendaraan",
                     style = TextStyle(
-                        fontSize = 16.sp,
+                        fontSize = 18.sp,
                         fontFamily = FontFamily.Default,
                         fontWeight = FontWeight(700),
                         color = Color(0xFF090F59)
@@ -87,7 +92,7 @@ fun EditVehicleDialog(
                     contentDescription = "Hapus Kendaraan",
                     tint = Color(0xFF8271D4),
                     modifier = Modifier
-                        .size(20.dp)
+                        .size(24.dp)
                         .clickable { onDeleteClick() }
                 )
             }
@@ -97,23 +102,23 @@ fun EditVehicleDialog(
                 value = nameInput,
                 onValueChange = { nameInput = it },
                 placeholder = "Nama Kendaraan",
-                heightDp = 32.dp
+                heightDp = 38.dp
             )
 
-            // Input Field 2: Konsumsi BBM km/L
+            // Input Field 2: Konsumsi BBM km/L (Otomatis format ribuan titik seperti 1.000)
             DialogInputField(
                 value = efficiencyInput,
-                onValueChange = { efficiencyInput = it },
+                onValueChange = { efficiencyInput = FuelCalculator.formatThousandInput(it) },
                 placeholder = "Konsumsi BBM km/L",
-                heightDp = 32.dp,
+                heightDp = 38.dp,
                 keyboardType = KeyboardType.Number
             )
 
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Baris Tombol Simpan & Batal
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Tombol Simpan (Biru)
@@ -125,14 +130,14 @@ fun EditVehicleDialog(
                             ambientColor = Color(0x40000000),
                             shape = RoundedCornerShape(16.dp)
                         )
-                        .width(95.dp)
-                        .height(30.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFF5DB1E7),
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable {
-                            val eff = efficiencyInput.toBigDecimalOrNull() ?: vehicle?.fuelEfficiency ?: BigDecimal("12.0")
+                            val eff = FuelCalculator.parseEfficiency(efficiencyInput) ?: vehicle?.fuelEfficiency ?: BigDecimal("12.0")
                             val id = vehicle?.id ?: ""
                             onSimpanClick(id, nameInput, typeInput, eff)
                         },
@@ -141,7 +146,7 @@ fun EditVehicleDialog(
                     Text(
                         text = "Simpan",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFFFFFFFF)
@@ -158,8 +163,8 @@ fun EditVehicleDialog(
                             ambientColor = Color(0x40000000),
                             shape = RoundedCornerShape(16.dp)
                         )
-                        .width(95.dp)
-                        .height(30.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFFE6E6E6),
                             shape = RoundedCornerShape(16.dp)
@@ -170,7 +175,7 @@ fun EditVehicleDialog(
                     Text(
                         text = "Batal",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFF090F59)

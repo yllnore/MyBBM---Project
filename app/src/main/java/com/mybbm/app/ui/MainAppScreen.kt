@@ -48,6 +48,10 @@ fun MainAppScreen(viewModel: BbmViewModel) {
     // Intercept back button when not in HOME
     BackHandler(enabled = currentScreen != AppScreen.HOME) {
         when (currentScreen) {
+            AppScreen.RESULT -> {
+                viewModel.resetTripForm()
+                viewModel.navigateTo(AppScreen.HOME)
+            }
             AppScreen.ABOUT -> viewModel.navigateTo(AppScreen.SETTINGS)
             AppScreen.VEHICLES -> viewModel.navigateTo(AppScreen.SETTINGS)
             AppScreen.FUELS -> viewModel.navigateTo(AppScreen.SETTINGS)
@@ -71,7 +75,10 @@ fun MainAppScreen(viewModel: BbmViewModel) {
             AppScreen.RESULT -> {
                 ResultScreen(
                     viewModel = viewModel,
-                    onNavigateBack = { viewModel.navigateTo(AppScreen.HOME) },
+                    onNavigateBack = {
+                        viewModel.resetTripForm()
+                        viewModel.navigateTo(AppScreen.HOME)
+                    },
                     onNavigateToSettings = { viewModel.navigateTo(AppScreen.SETTINGS) },
                     onNavigateToHistory = { viewModel.navigateTo(AppScreen.HISTORI) }
                 )
@@ -227,18 +234,24 @@ fun MainAppScreen(viewModel: BbmViewModel) {
             )
         }
 
-        // 3. Floating Toast Notifications
+        // 3. Floating Toast Notifications (Hanya untuk aksi CRUD / notifikasi eksplisit)
         if (toastMessage != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 80.dp),
-                contentAlignment = Alignment.BottomCenter
+            val message = toastMessage.orEmpty()
+            if (message.contains("tambah", ignoreCase = true) ||
+                message.contains("simpan", ignoreCase = true) ||
+                message.contains("hapus", ignoreCase = true)
             ) {
-                if (toastMessage!!.contains("hapus", ignoreCase = true)) {
-                    ToastBerhasilDihapus(onCloseClick = { viewModel.clearToast() })
-                } else {
-                    SuccessToast(onCloseClick = { viewModel.clearToast() })
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 80.dp),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    if (message.contains("hapus", ignoreCase = true)) {
+                        ToastBerhasilDihapus(onCloseClick = { viewModel.clearToast() })
+                    } else {
+                        SuccessToast(onCloseClick = { viewModel.clearToast() })
+                    }
                 }
             }
         }

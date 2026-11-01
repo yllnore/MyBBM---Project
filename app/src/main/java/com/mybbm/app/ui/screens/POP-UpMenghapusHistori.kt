@@ -37,36 +37,37 @@ fun DeleteHistoryDialog(
     onConfirmDelete: () -> Unit = {}
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
-        // Container Utama Pop Up
+        // Container Utama Pop Up (Diperbesar 320.dp)
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .width(280.dp)
+                .width(320.dp)
                 .border(
                     width = 1.dp,
                     color = Color(0xFFBFB7FA),
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                    shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 22.dp, bottomEnd = 22.dp)
                 )
                 .background(
                     color = Color(0xFFF1EFFF),
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                    shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 22.dp, bottomEnd = 22.dp)
                 )
-                .padding(horizontal = 20.dp, vertical = 20.dp)
+                .padding(horizontal = 22.dp, vertical = 22.dp)
         ) {
             // Teks Pertanyaan Konfirmasi
             Text(
                 text = "Apakah Anda yakin ingin menghapus riwayat ini?",
                 style = TextStyle(
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     fontFamily = FontFamily(Font(R.font.roboto_regular)),
                     fontWeight = FontWeight(700),
                     color = Color(0xFF090F59),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    lineHeight = 22.sp
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Baris Tombol Aksi (Hapus & Batal)
             Row(
@@ -78,10 +79,10 @@ fun DeleteHistoryDialog(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .width(98.dp)
-                        .height(30.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .shadow(
-                            elevation = 2.dp,
+                            elevation = 2.2.dp,
                             spotColor = Color(0x40000000),
                             ambientColor = Color(0x40000000),
                             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
@@ -99,7 +100,7 @@ fun DeleteHistoryDialog(
                     Text(
                         text = "Hapus",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily(Font(R.font.roboto_regular)),
                             fontWeight = FontWeight(700),
                             color = Color(0xFFFFFFFF)
@@ -107,16 +108,16 @@ fun DeleteHistoryDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(14.dp))
 
                 // Tombol Batal (Abu-abu Muda)
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .width(98.dp)
-                        .height(30.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .shadow(
-                            elevation = 2.dp,
+                            elevation = 2.2.dp,
                             spotColor = Color(0x40000000),
                             ambientColor = Color(0x40000000),
                             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
@@ -133,7 +134,7 @@ fun DeleteHistoryDialog(
                     Text(
                         text = "Batal",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily(Font(R.font.roboto_regular)),
                             fontWeight = FontWeight(700),
                             color = Color(0xFF090F59)

@@ -1,58 +1,98 @@
 package com.mybbm.app.data.local.dao
 
 import androidx.room.*
-import com.mybbm.app.data.local.entity.FuelEntity
-import com.mybbm.app.data.local.entity.HistoryEntity
-import com.mybbm.app.data.local.entity.VehicleEntity
+import com.mybbm.app.data.local.entity.BbmKustomEntity
+import com.mybbm.app.data.local.entity.KendaraanKustomEntity
+import com.mybbm.app.data.local.entity.RiwayatEntity
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Data Access Object (DAO) untuk tabel `kendaraan_kustom` (data buatan user).
+ */
 @Dao
-interface VehicleDao {
-    @Query("SELECT * FROM kendaraan ORDER BY created_at DESC")
-    fun getAllVehicles(): Flow<List<VehicleEntity>>
+interface KendaraanKustomDao {
+    @Query("SELECT * FROM kendaraan_kustom ORDER BY created_at DESC")
+    fun getAllKendaraanKustom(): Flow<List<KendaraanKustomEntity>>
+
+    @Query("SELECT * FROM kendaraan_kustom ORDER BY created_at DESC")
+    suspend fun getAllKendaraanKustomList(): List<KendaraanKustomEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertVehicle(vehicle: VehicleEntity)
+    suspend fun insertKendaraan(kendaraan: KendaraanKustomEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(vehicles: List<VehicleEntity>)
+    suspend fun insertAll(kendaraanList: List<KendaraanKustomEntity>)
 
     @Update
-    suspend fun updateVehicle(vehicle: VehicleEntity)
+    suspend fun updateKendaraan(kendaraan: KendaraanKustomEntity)
 
-    @Query("DELETE FROM kendaraan WHERE id = :id")
-    suspend fun deleteVehicleById(id: String)
+    @Delete
+    suspend fun deleteKendaraan(kendaraan: KendaraanKustomEntity)
+
+    @Query("DELETE FROM kendaraan_kustom WHERE id = :id")
+    suspend fun deleteKendaraanById(id: String)
+
+    @Query("DELETE FROM kendaraan_kustom")
+    suspend fun deleteAllKendaraan()
 }
 
+/**
+ * Data Access Object (DAO) untuk tabel `bbm_kustom` (data buatan user).
+ */
 @Dao
-interface FuelDao {
-    @Query("SELECT * FROM jenis_bbm ORDER BY nama ASC")
-    fun getAllFuels(): Flow<List<FuelEntity>>
+interface BbmKustomDao {
+    @Query("SELECT * FROM bbm_kustom ORDER BY created_at DESC")
+    fun getAllBbmKustom(): Flow<List<BbmKustomEntity>>
+
+    @Query("SELECT * FROM bbm_kustom ORDER BY created_at DESC")
+    suspend fun getAllBbmKustomList(): List<BbmKustomEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertFuel(fuel: FuelEntity)
+    suspend fun insertBbm(bbm: BbmKustomEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(fuels: List<FuelEntity>)
+    suspend fun insertAll(bbmList: List<BbmKustomEntity>)
 
     @Update
-    suspend fun updateFuel(fuel: FuelEntity)
+    suspend fun updateBbm(bbm: BbmKustomEntity)
 
-    @Query("DELETE FROM jenis_bbm WHERE id = :id")
-    suspend fun deleteFuelById(id: String)
+    @Delete
+    suspend fun deleteBbm(bbm: BbmKustomEntity)
+
+    @Query("DELETE FROM bbm_kustom WHERE id = :id")
+    suspend fun deleteBbmById(id: String)
+
+    @Query("DELETE FROM bbm_kustom")
+    suspend fun deleteAllBbm()
 }
 
+/**
+ * Data Access Object (DAO) untuk tabel `riwayat`.
+ */
 @Dao
-interface HistoryDao {
-    @Query("SELECT * FROM perjalanan ORDER BY created_at DESC")
-    fun getAllHistories(): Flow<List<HistoryEntity>>
+interface RiwayatDao {
+    @Query("SELECT * FROM riwayat ORDER BY timestamp DESC")
+    fun getAllRiwayat(): Flow<List<RiwayatEntity>>
+
+    @Query("SELECT * FROM riwayat ORDER BY timestamp DESC")
+    suspend fun getAllRiwayatList(): List<RiwayatEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertHistory(history: HistoryEntity)
+    suspend fun insertRiwayat(riwayat: RiwayatEntity)
 
-    @Query("DELETE FROM perjalanan WHERE id = :id")
-    suspend fun deleteHistoryById(id: String)
+    @Delete
+    suspend fun deleteRiwayat(riwayat: RiwayatEntity)
 
-    @Query("DELETE FROM perjalanan")
-    suspend fun deleteAllHistories()
+    @Query("DELETE FROM riwayat WHERE id = :id")
+    suspend fun deleteRiwayatById(id: String)
+
+    @Query("DELETE FROM riwayat")
+    suspend fun deleteAllRiwayat()
 }
+
+// Aliases untuk backward compatibility
+typealias KendaraanDao = KendaraanKustomDao
+typealias BbmDao = BbmKustomDao
+typealias VehicleDao = KendaraanKustomDao
+typealias FuelDao = BbmKustomDao
+typealias HistoryDao = RiwayatDao

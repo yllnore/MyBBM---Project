@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
 import com.mybbm.app.domain.model.VehicleModel
+import com.mybbm.app.util.FuelCalculator
 import com.mybbm.app.viewmodel.BbmViewModel
 
 @Composable
@@ -197,9 +198,10 @@ fun VehicleSettingsScreen(
                 } else {
                     vehicles.forEach { v ->
                         val iconRes = if (v.type.equals("Motor", ignoreCase = true)) R.drawable.motor else R.drawable.mobil
+                        val consumptionFormatted = "${FuelCalculator.formatEfficiency(v.fuelEfficiency)} km/L"
                         VehicleCardItem(
                             name = v.name,
-                            consumption = "${v.fuelEfficiency} km/L",
+                            consumption = consumptionFormatted,
                             iconRes = iconRes,
                             onEditClick = {
                                 if (viewModel != null) {
@@ -241,7 +243,7 @@ fun VehicleCardItem(
             .fillMaxWidth()
             .height(95.dp)
             .background(color = Color(0xFFF1EFFF), shape = RoundedCornerShape(size = 21.dp))
-            .padding(start = 16.dp, end = 20.dp)
+            .padding(start = 16.dp, end = 12.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -288,15 +290,20 @@ fun VehicleCardItem(
             }
         }
 
-        // Icon Pensil Edit
-        Icon(
-            imageVector = Icons.Outlined.Edit,
-            contentDescription = "Edit $name",
-            tint = Color(0xFF090F59),
+        // Icon Pensil Edit dengan area sentuh yang nyaman
+        Box(
             modifier = Modifier
-                .size(20.dp)
-                .clickable { onEditClick() }
-        )
+                .size(44.dp)
+                .clickable { onEditClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Edit,
+                contentDescription = "Edit $name",
+                tint = Color(0xFF090F59),
+                modifier = Modifier.size(22.dp)
+            )
+        }
     }
 }
 

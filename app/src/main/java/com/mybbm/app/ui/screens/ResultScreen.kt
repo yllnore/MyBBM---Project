@@ -25,11 +25,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
+import com.mybbm.app.domain.model.LatLng
 import com.mybbm.app.domain.model.SpbuInfo
+import com.mybbm.app.ui.components.OsmMapView
 import com.mybbm.app.util.FuelCalculator
 import com.mybbm.app.viewmodel.BbmViewModel
 
@@ -41,6 +44,9 @@ fun ResultScreen(
     onNavigateToHistory: () -> Unit = {}
 ) {
     val result by viewModel.calculationResult.collectAsState()
+    val originCoord by viewModel.originCoord.collectAsState()
+    val destinationCoord by viewModel.destinationCoord.collectAsState()
+    val routePoints by viewModel.routePoints.collectAsState()
 
     val configuration = LocalConfiguration.current
     val screenHeightPx = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
@@ -53,27 +59,23 @@ fun ResultScreen(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFE8ECEF)) // Map simulation background
+        modifier = Modifier.fillMaxSize()
     ) {
-        // 1. Map Canvas Simulation with Route Line & Gas Station Markers
+        // 1. Peta OSM Asli dengan Rute Garis (Polyline) dan Penanda
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 300.dp)
+                .padding(bottom = 260.dp)
         ) {
-            // Google Map Watermark / Indicator at bottom left of map
-            Text(
-                text = "Google",
-                style = TextStyle(
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0x995F6368)
-                ),
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 16.dp, bottom = 16.dp)
+            OsmMapView(
+                modifier = Modifier.fillMaxSize(),
+                centerCoordinate = LatLng(-0.5021, 117.1536),
+                zoomLevel = 12.0,
+                originCoordinate = originCoord,
+                originLabel = result?.originName ?: "Asal",
+                destinationCoordinate = destinationCoord,
+                destinationLabel = result?.destinationName ?: "Tujuan",
+                routePoints = result?.routePoints?.ifEmpty { routePoints } ?: routePoints
             )
 
             // Back button on top left of map
@@ -294,7 +296,7 @@ fun ResultScreen(
                     .height(48.dp)
             ) {
                 Text(
-                    text = "Kembali ke Beranda",
+                    text = "Hitung perjalanan lain",
                     style = TextStyle(
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -330,48 +332,76 @@ fun ResultScreen(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // SPBU List Items
-                val spbuList = result?.nearbySpbu ?: listOf(
-                    SpbuInfo("SPBU Pertamina", "1,2 km"),
-                    SpbuInfo("SPBU Shell", "2,1 km")
-                )
+                // SPBU List Items (Data riil dari OpenStreetMap Overpass API)
+                val spbuList = result?.nearbySpbu.orEmpty()
 
-                spbuList.forEach { spbu ->
-                    Row(
+                if (spbuList.isEmpty()) {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp)
-                            .background(Color(0xFFF3F1FF), shape = RoundedCornerShape(12.dp))
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.pertamax),
-                                contentDescription = "SPBU",
-                                modifier = Modifier.size(22.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = Color(0xFF7542EF),
+                                strokeWidth = 2.dp
                             )
                             Text(
-                                text = spbu.name,
+                                text = "Mencari SPBU terdekat...",
                                 style = TextStyle(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF303B65)
+                                )
+                            )
+                        }
+                    }
+                } else {
+                    spbuList.forEach { spbu ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp)
+                                .background(Color(0xFFF3F1FF), shape = RoundedCornerShape(12.dp))
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f).padding(end = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.pertamax),
+                                    contentDescription = spbu.brand,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Text(
+                                    text = spbu.name,
+                                    style = TextStyle(
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF090F59)
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Text(
+                                text = spbu.distanceFormatted,
+                                style = TextStyle(
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
                                     color = Color(0xFF090F59)
                                 )
                             )
                         }
-                        Text(
-                            text = spbu.distanceFormatted,
-                            style = TextStyle(
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFF090F59)
-                            )
-                        )
                     }
                 }
             }

@@ -31,35 +31,36 @@ fun DeleteConfirmationDialog(
     onHapusClick: () -> Unit = {},
     onBatalClick: () -> Unit = {}
 ) {
-    // Card Container Utama (256.dp x 119.dp)
+    // Card Container Utama (Diperbesar 310.dp x 148.dp)
     Box(
         modifier = Modifier
-            .width(256.dp)
-            .height(119.dp)
+            .width(310.dp)
+            .height(148.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
                 shape = RoundedCornerShape(
-                    topStart = 16.dp,
-                    topEnd = 16.dp,
-                    bottomStart = 20.dp,
-                    bottomEnd = 20.dp
+                    topStart = 18.dp,
+                    topEnd = 18.dp,
+                    bottomStart = 22.dp,
+                    bottomEnd = 22.dp
                 )
             )
             .background(
                 color = Color(0xFFF1EFFF),
                 shape = RoundedCornerShape(
-                    topStart = 16.dp,
-                    topEnd = 16.dp,
-                    bottomStart = 20.dp,
-                    bottomEnd = 20.dp
+                    topStart = 18.dp,
+                    topEnd = 18.dp,
+                    bottomStart = 22.dp,
+                    bottomEnd = 22.dp
                 )
-            ),
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)
         ) {
             // Teks Pertanyaan Konfirmasi
             Text(
@@ -69,16 +70,16 @@ fun DeleteConfirmationDialog(
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight(700),
                     color = Color(0xFF090F59),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    lineHeight = 22.sp
                 ),
                 modifier = Modifier
-                    .width(196.dp)
-                    .height(57.dp)
+                    .width(260.dp)
             )
 
             // Baris Tombol Hapus & Batal
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Tombol Hapus (Biru)
@@ -95,8 +96,8 @@ fun DeleteConfirmationDialog(
                                 bottomEnd = 20.dp
                             )
                         )
-                        .width(95.dp)
-                        .height(27.dp)
+                        .width(115.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFF5DB1E7),
                             shape = RoundedCornerShape(
@@ -112,14 +113,11 @@ fun DeleteConfirmationDialog(
                     Text(
                         text = "Hapus",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFFFFFFFF)
                         ),
-                        modifier = Modifier
-                            .width(35.dp)
-                            .height(18.dp),
                         textAlign = TextAlign.Center
                     )
                 }
@@ -138,8 +136,8 @@ fun DeleteConfirmationDialog(
                                 bottomEnd = 20.dp
                             )
                         )
-                        .width(95.dp)
-                        .height(27.dp)
+                        .width(115.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFFE6E6E6),
                             shape = RoundedCornerShape(
@@ -155,14 +153,11 @@ fun DeleteConfirmationDialog(
                     Text(
                         text = "Batal",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFF090F59)
                         ),
-                        modifier = Modifier
-                            .width(28.dp)
-                            .height(18.dp),
                         textAlign = TextAlign.Center
                     )
                 }

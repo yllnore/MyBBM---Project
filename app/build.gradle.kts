@@ -1,5 +1,3 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -7,6 +5,18 @@ plugins {
     id("com.google.devtools.ksp")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
+
+import java.io.FileInputStream
+import java.util.Properties
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
+val supabaseUrl = localProperties.getProperty("SUPABASE_URL") ?: "https://vbmxsertxcthtdvxxksr.supabase.co"
+val supabaseAnonKey = localProperties.getProperty("SUPABASE_ANON_KEY") ?: ""
 
 android {
     namespace = "com.mybbm.app"
@@ -21,14 +31,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val localProperties = Properties()
-        val localPropertiesFile = project.rootProject.file("local.properties")
-        if (localPropertiesFile.exists()) {
-            localProperties.load(localPropertiesFile.inputStream())
-        }
-        val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
-        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
-        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
     }
 
     buildTypes {
@@ -76,17 +80,16 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
-    // Room Database
+    // Room Database (100% Offline Storage untuk data pengguna kustom & riwayat)
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
-    // Supabase Kotlin SDK
+    // Supabase Kotlin SDK (Postgrest + Ktor OkHttp Engine untuk read-only default datasets)
     val supabaseVersion = "3.0.2"
     implementation(platform("io.github.jan-tennert.supabase:bom:$supabaseVersion"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
-    implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.ktor:ktor-client-okhttp:3.0.1")
 
     // Coroutines Core & Android
@@ -100,12 +103,11 @@ dependencies {
     val workVersion = "2.10.0"
     implementation("androidx.work:work-runtime-ktx:$workVersion")
 
-    // OkHttp Client (untuk Google Directions API)
+    // OkHttp Client (untuk OSRM Routing API)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
-    // Google Maps Compose & Location
-    implementation(libs.maps.compose)
-    implementation(libs.play.services.location)
+    // OpenStreetMap (osmdroid)
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

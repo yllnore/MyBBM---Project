@@ -32,37 +32,38 @@ fun DeleteBbmDialog(
     onHapusClick: () -> Unit = {},
     onBatalClick: () -> Unit = {}
 ) {
-    // Card Container Utama (Ukuran Tetap 256.dp x 119.dp)
+    // Card Container Utama (Diperbesar 310.dp x 148.dp)
     Box(
         modifier = Modifier
-            .width(256.dp)
-            .height(119.dp)
+            .width(310.dp)
+            .height(148.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
                 shape = RoundedCornerShape(
-                    topStart = 16.dp,
-                    topEnd = 16.dp,
-                    bottomStart = 20.dp,
-                    bottomEnd = 20.dp
+                    topStart = 18.dp,
+                    topEnd = 18.dp,
+                    bottomStart = 22.dp,
+                    bottomEnd = 22.dp
                 )
             )
             .background(
                 color = Color(0xFFF1EFFF),
                 shape = RoundedCornerShape(
-                    topStart = 16.dp,
-                    topEnd = 16.dp,
-                    bottomStart = 20.dp,
-                    bottomEnd = 20.dp
+                    topStart = 18.dp,
+                    topEnd = 18.dp,
+                    bottomStart = 22.dp,
+                    bottomEnd = 22.dp
                 )
-            ),
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)
         ) {
-            // Teks Pertanyaan Konfirmasi BBM (2 Baris Presisi Rata Tengah)
+            // Teks Pertanyaan Konfirmasi BBM
             Text(
                 text = "Apakah Anda yakin ingin\nmenghapus BBM ini?",
                 style = TextStyle(
@@ -70,29 +71,29 @@ fun DeleteBbmDialog(
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight(700),
                     color = Color(0xFF090F59),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    lineHeight = 22.sp
                 ),
                 modifier = Modifier
-                    .width(210.dp)
-                    .height(44.dp)
+                    .width(260.dp)
             )
 
             // Baris Tombol Hapus & Batal
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Tombol Hapus (Biru Kapsul Membulat)
                 Box(
                     modifier = Modifier
                         .shadow(
-                            elevation = 2.dp,
+                            elevation = 2.2.dp,
                             spotColor = Color(0x40000000),
                             ambientColor = Color(0x40000000),
                             shape = CircleShape
                         )
-                        .width(95.dp)
-                        .height(28.dp)
+                        .width(115.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFF5DB1E7),
                             shape = CircleShape
@@ -103,7 +104,7 @@ fun DeleteBbmDialog(
                     Text(
                         text = "Hapus",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFFFFFFFF)
@@ -116,13 +117,13 @@ fun DeleteBbmDialog(
                 Box(
                     modifier = Modifier
                         .shadow(
-                            elevation = 2.dp,
+                            elevation = 2.2.dp,
                             spotColor = Color(0x40000000),
                             ambientColor = Color(0x40000000),
                             shape = CircleShape
                         )
-                        .width(95.dp)
-                        .height(28.dp)
+                        .width(115.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFFE6E6E6),
                             shape = CircleShape
@@ -133,7 +134,7 @@ fun DeleteBbmDialog(
                     Text(
                         text = "Batal",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFF090F59)

@@ -66,27 +66,15 @@ fun HistoriScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "Perjalanan Sebelumnya",
-                        style = TextStyle(
-                            fontSize = 22.sp,
-                            fontFamily = FontFamily(Font(R.font.roboto_regular)),
-                            fontWeight = FontWeight(700),
-                            color = Color(0xFF090F59)
-                        )
+                Text(
+                    text = "Perjalanan Sebelumnya",
+                    style = TextStyle(
+                        fontSize = 22.sp,
+                        fontFamily = FontFamily(Font(R.font.roboto_regular)),
+                        fontWeight = FontWeight(700),
+                        color = Color(0xFF090F59)
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Pick up where you left off",
-                        style = TextStyle(
-                            fontSize = 14.sp,
-                            fontFamily = FontFamily(Font(R.font.roboto_regular)),
-                            fontWeight = FontWeight(500),
-                            color = Color(0xFF8271D4)
-                        )
-                    )
-                }
+                )
 
                 // Tombol Close Bulat
                 Box(
@@ -165,7 +153,7 @@ fun HistoriCardItem(
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxWidth()
-            .height(74.dp)
+            .height(76.dp)
             .border(
                 width = 1.3.dp,
                 color = Color(0xFFDFD9FF),
@@ -181,17 +169,17 @@ fun HistoriCardItem(
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(40.dp)
+                .size(44.dp)
                 .background(
                     color = Color(0xFFE3DCFF),
-                    shape = RoundedCornerShape(size = 11.dp)
+                    shape = RoundedCornerShape(size = 12.dp)
                 )
         ) {
             Icon(
                 imageVector = Icons.Default.LocationOn,
                 contentDescription = "Map Pin",
                 tint = Color(0xFF090F59),
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(30.dp)
             )
         }
 

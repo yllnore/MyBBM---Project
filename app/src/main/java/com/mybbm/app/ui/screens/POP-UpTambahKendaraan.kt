@@ -33,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mybbm.app.util.FuelCalculator
 import java.math.BigDecimal
 
 @Composable
@@ -47,8 +48,8 @@ fun AddVehicleDialog(
     // Card Container Utama
     Box(
         modifier = Modifier
-            .width(256.dp)
-            .height(235.dp)
+            .width(320.dp)
+            .height(295.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
@@ -58,18 +59,18 @@ fun AddVehicleDialog(
                 color = Color(0xFFF1EFFF),
                 shape = RoundedCornerShape(16.dp)
             )
-            .padding(vertical = 16.dp),
+            .padding(vertical = 20.dp, horizontal = 16.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // Judul Dialog
             Text(
                 text = "Tambah Kendaraan Baru",
                 style = TextStyle(
-                    fontSize = 16.sp,
+                    fontSize = 18.sp,
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight(700),
                     color = Color(0xFF090F59),
@@ -84,7 +85,7 @@ fun AddVehicleDialog(
                 value = nameInput,
                 onValueChange = { nameInput = it },
                 placeholder = "Nama Kendaraan",
-                heightDp = 32.dp
+                heightDp = 38.dp
             )
 
             // Input Field 2: Jenis Kendaraan (Mobil / Motor)
@@ -92,15 +93,15 @@ fun AddVehicleDialog(
                 value = typeInput,
                 onValueChange = { typeInput = it },
                 placeholder = "Jenis Kendaraan (Mobil/Motor)",
-                heightDp = 32.dp
+                heightDp = 38.dp
             )
 
-            // Input Field 3: Konsumsi BBM km/L
+            // Input Field 3: Konsumsi BBM km/L (Otomatis format ribuan titik seperti 1.000)
             DialogInputField(
                 value = efficiencyInput,
-                onValueChange = { efficiencyInput = it },
+                onValueChange = { efficiencyInput = FuelCalculator.formatThousandInput(it) },
                 placeholder = "Konsumsi BBM km/L (misal 15.0)",
-                heightDp = 32.dp,
+                heightDp = 38.dp,
                 keyboardType = KeyboardType.Number
             )
 
@@ -108,7 +109,7 @@ fun AddVehicleDialog(
 
             // Baris Tombol Simpan & Batal
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Tombol Simpan (Biru)
@@ -119,14 +120,14 @@ fun AddVehicleDialog(
                             spotColor = Color(0x40000000),
                             ambientColor = Color(0x40000000)
                         )
-                        .width(95.dp)
-                        .height(30.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFF5DB1E7),
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable {
-                            val eff = efficiencyInput.toBigDecimalOrNull() ?: BigDecimal("12.0")
+                            val eff = FuelCalculator.parseEfficiency(efficiencyInput) ?: BigDecimal("12.0")
                             val finalName = nameInput.ifBlank { "KENDARAAN BARU" }
                             val finalType = typeInput.ifBlank { "Mobil" }
                             onSimpanClick(finalName, finalType, eff)
@@ -136,7 +137,7 @@ fun AddVehicleDialog(
                     Text(
                         text = "Simpan",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFFFFFFFF)
@@ -152,8 +153,8 @@ fun AddVehicleDialog(
                             spotColor = Color(0x40000000),
                             ambientColor = Color(0x40000000)
                         )
-                        .width(95.dp)
-                        .height(30.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFFE6E6E6),
                             shape = RoundedCornerShape(16.dp)
@@ -164,7 +165,7 @@ fun AddVehicleDialog(
                     Text(
                         text = "Batal",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFF090F59)
@@ -190,7 +191,7 @@ fun DialogInputField(
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         singleLine = true,
         textStyle = TextStyle(
-            fontSize = 12.sp,
+            fontSize = 14.sp,
             fontFamily = FontFamily.Default,
             fontWeight = FontWeight(500),
             color = Color(0xFF090F59)
@@ -198,7 +199,7 @@ fun DialogInputField(
         decorationBox = { innerTextField ->
             Box(
                 modifier = Modifier
-                    .width(209.dp)
+                    .width(260.dp)
                     .height(heightDp)
                     .border(
                         width = 1.dp,
@@ -206,14 +207,14 @@ fun DialogInputField(
                         shape = RoundedCornerShape(12.dp)
                     )
                     .background(Color.White, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = 14.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 if (value.isEmpty()) {
                     Text(
                         text = placeholder,
                         style = TextStyle(
-                            fontSize = 11.sp,
+                            fontSize = 13.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(400),
                             color = Color(0xFF8B92B2)

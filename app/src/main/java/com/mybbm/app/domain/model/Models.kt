@@ -1,19 +1,17 @@
 package com.mybbm.app.domain.model
 
-import java.math.BigDecimal
-
 data class VehicleModel(
     val id: String,
     val name: String,
     val type: String, // "Mobil" atau "Motor"
-    val fuelEfficiency: BigDecimal, // km/L
+    val fuelEfficiency: java.math.BigDecimal, // km/L
     val isDefault: Boolean = false
 )
 
 data class FuelModel(
     val id: String,
     val name: String,
-    val pricePerLiter: BigDecimal,
+    val pricePerLiter: java.math.BigDecimal,
     val iconResId: Int? = null,
     val colorHex: String? = null
 )
@@ -22,9 +20,9 @@ data class HistoryModel(
     val id: String,
     val origin: String,
     val destination: String,
-    val distanceKm: BigDecimal,
-    val totalCost: BigDecimal,
-    val totalLiters: BigDecimal,
+    val distanceKm: java.math.BigDecimal,
+    val totalCost: java.math.BigDecimal,
+    val totalLiters: java.math.BigDecimal,
     val fuelName: String,
     val vehicleName: String,
     val formattedDate: String
@@ -41,10 +39,11 @@ data class CalculationResult(
     val destinationName: String,
     val vehicleName: String,
     val fuelType: String,
-    val fuelEfficiency: BigDecimal,
-    val pricePerLiter: BigDecimal,
-    val distanceKm: BigDecimal,
-    val totalLiters: BigDecimal,
-    val totalCost: BigDecimal,
+    val fuelEfficiency: java.math.BigDecimal,
+    val pricePerLiter: java.math.BigDecimal,
+    val distanceKm: java.math.BigDecimal,
+    val totalLiters: java.math.BigDecimal,
+    val totalCost: java.math.BigDecimal,
+    val routePoints: List<LatLng> = emptyList(),
     val nearbySpbu: List<SpbuInfo> = emptyList()
 )

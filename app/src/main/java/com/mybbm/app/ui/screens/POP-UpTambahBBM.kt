@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mybbm.app.util.FuelCalculator
 import java.math.BigDecimal
 
 @Composable
@@ -42,8 +43,8 @@ fun AddBbmDialog(
 
     Box(
         modifier = Modifier
-            .width(256.dp)
-            .height(190.dp)
+            .width(320.dp)
+            .height(260.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
@@ -53,17 +54,17 @@ fun AddBbmDialog(
                 color = Color(0xFFF1EFFF),
                 shape = RoundedCornerShape(16.dp)
             )
-            .padding(vertical = 12.dp),
+            .padding(vertical = 18.dp, horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
         ) {
             Text(
                 text = "Tambah BBM Baru",
                 style = TextStyle(
-                    fontSize = 16.sp,
+                    fontSize = 18.sp,
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight(700),
                     color = Color(0xFF090F59),
@@ -76,23 +77,23 @@ fun AddBbmDialog(
                 value = nameInput,
                 onValueChange = { nameInput = it },
                 placeholder = "Nama Jenis BBM",
-                heightDp = 32.dp
+                heightDp = 38.dp
             )
 
-            // Input Field 2: Harga BBM per Liter
+            // Input Field 2: Harga BBM per Liter (Otomatis format ribuan titik seperti 12.500)
             DialogInputField(
                 value = priceInput,
-                onValueChange = { priceInput = it },
-                placeholder = "Harga BBM per Liter (misal 12500)",
-                heightDp = 32.dp,
+                onValueChange = { priceInput = FuelCalculator.formatDigitsAsThousand(it) },
+                placeholder = "Harga BBM per Liter (misal 12.500)",
+                heightDp = 38.dp,
                 keyboardType = KeyboardType.Number
             )
 
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Baris Tombol Simpan & Batal
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Tombol Simpan (Biru)
@@ -104,14 +105,14 @@ fun AddBbmDialog(
                             ambientColor = Color(0x40000000),
                             shape = RoundedCornerShape(16.dp)
                         )
-                        .width(95.dp)
-                        .height(30.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFF5DB1E7),
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable {
-                            val price = priceInput.toBigDecimalOrNull() ?: BigDecimal("10000")
+                            val price = FuelCalculator.parseThousand(priceInput) ?: BigDecimal("10000")
                             val finalName = nameInput.ifBlank { "BBM BARU" }
                             onSimpanClick(finalName, price)
                         },
@@ -120,7 +121,7 @@ fun AddBbmDialog(
                     Text(
                         text = "Simpan",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFFFFFFFF)
@@ -137,8 +138,8 @@ fun AddBbmDialog(
                             ambientColor = Color(0x40000000),
                             shape = RoundedCornerShape(16.dp)
                         )
-                        .width(95.dp)
-                        .height(30.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFFE6E6E6),
                             shape = RoundedCornerShape(16.dp)
@@ -149,7 +150,7 @@ fun AddBbmDialog(
                     Text(
                         text = "Batal",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFF090F59)

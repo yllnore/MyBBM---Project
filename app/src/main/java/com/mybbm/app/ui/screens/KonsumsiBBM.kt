@@ -225,7 +225,7 @@ fun BbmCardItem(
             .fillMaxWidth()
             .height(95.dp)
             .background(color = Color(0xFFF1EFFF), shape = RoundedCornerShape(size = 21.dp))
-            .padding(start = 16.dp, end = 20.dp)
+            .padding(start = 16.dp, end = 12.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -272,15 +272,20 @@ fun BbmCardItem(
             }
         }
 
-        // Icon Pensil Edit
-        Icon(
-            imageVector = Icons.Outlined.Edit,
-            contentDescription = "Edit $name",
-            tint = Color(0xFF090F59),
+        // Icon Pensil Edit dengan area sentuh yang nyaman
+        Box(
             modifier = Modifier
-                .size(20.dp)
-                .clickable { onEditClick() }
-        )
+                .size(44.dp)
+                .clickable { onEditClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Edit,
+                contentDescription = "Edit $name",
+                tint = Color(0xFF090F59),
+                modifier = Modifier.size(22.dp)
+            )
+        }
     }
 }
 
