@@ -3,6 +3,7 @@ package com.mybbm.app.ui.screens
 import com.mybbm.app.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,8 +49,8 @@ fun HistoriScreen(
     onCloseClick: () -> Unit = {},
     viewModel: BbmViewModel? = null
 ) {
-    val histories by (viewModel?.histories?.collectAsState() ?: androidx.compose.runtime.remember {
-        androidx.compose.runtime.mutableStateOf(emptyList())
+    val histories by (viewModel?.histories?.collectAsState() ?: remember {
+        mutableStateOf(emptyList())
     })
 
     Column(
@@ -67,7 +70,7 @@ fun HistoriScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Perjalanan Sebelumnya",
+                    text = "Riwayat Perjalanan",
                     style = TextStyle(
                         fontSize = 22.sp,
                         fontFamily = FontFamily(Font(R.font.roboto_regular)),
@@ -107,19 +110,18 @@ fun HistoriScreen(
                 .padding(horizontal = 16.dp, vertical = 20.dp)
         ) {
             if (histories.isEmpty()) {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxSize()
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    items(6) {
-                        HistoriCardItem(
-                            routeText = "POLNES → Balikpapan Superblock",
-                            detailText = "115 km · Rp 95.000",
-                            onDeleteClick = {
-                                viewModel?.showDeleteHistoryDialog?.value = true
-                            }
+                    Text(
+                        text = "Belum ada riwayat perjalanan.",
+                        style = TextStyle(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF6B7280)
                         )
-                    }
+                    )
                 }
             } else {
                 LazyColumn(
@@ -130,6 +132,9 @@ fun HistoriScreen(
                         HistoriCardItem(
                             routeText = "${item.origin} → ${item.destination}",
                             detailText = "${FuelCalculator.formatDistance(item.distanceKm)} · ${FuelCalculator.formatRupiah(item.totalCost)}",
+                            onItemClick = {
+                                viewModel?.selectHistoryItem(item)
+                            },
                             onDeleteClick = {
                                 viewModel?.historyToDelete?.value = item
                                 viewModel?.showDeleteHistoryDialog?.value = true
@@ -146,6 +151,7 @@ fun HistoriScreen(
 fun HistoriCardItem(
     routeText: String,
     detailText: String,
+    onItemClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {}
 ) {
     Row(
@@ -163,6 +169,7 @@ fun HistoriCardItem(
                 color = Color(0xFFF5F3FF),
                 shape = RoundedCornerShape(size = 14.dp)
             )
+            .clickable { onItemClick() }
             .padding(horizontal = 12.dp)
     ) {
         // Icon Map Pin Kiri

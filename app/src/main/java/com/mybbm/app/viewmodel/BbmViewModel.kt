@@ -640,6 +640,55 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Memilih item riwayat dari layar Histori dan menampilkan hasilnya
+     * secara langsung di Result Screen.
+     */
+    fun selectHistoryItem(item: HistoryModel) {
+        _origin.value = item.origin
+        _destination.value = item.destination
+
+        val originCoord = resolveCoordinate(item.origin, isOrigin = true)
+        val destCoord = resolveCoordinate(item.destination, isOrigin = false)
+        _originCoord.value = originCoord
+        _destinationCoord.value = destCoord
+
+        viewModelScope.launch {
+            val route = try {
+                osrmRouteRepository.getDrivingRoute(originCoord, destCoord)
+            } catch (_: Exception) {
+                null
+            }
+
+            val routePts = route?.polylinePoints ?: listOf(originCoord, destCoord)
+            _routePoints.value = routePts
+
+            val vehicle = _selectedVehicle.value ?: VehicleModel("1", item.vehicleName, "Mobil", BigDecimal("15.0"))
+            val fuel = _selectedFuel.value ?: FuelModel("1", item.fuelName, BigDecimal("12500"))
+
+            val result = CalculationResult(
+                originName = item.origin,
+                destinationName = item.destination,
+                vehicleName = item.vehicleName,
+                fuelType = item.fuelName,
+                fuelEfficiency = vehicle.fuelEfficiency,
+                pricePerLiter = fuel.pricePerLiter,
+                distanceKm = item.distanceKm,
+                totalLiters = item.totalLiters,
+                totalCost = item.totalCost,
+                routePoints = routePts,
+                nearbySpbu = emptyList()
+            )
+            _calculationResult.value = result
+            navigateTo(AppScreen.RESULT)
+
+            viewModelScope.launch(Dispatchers.IO) {
+                val realSpbuList = spbuRepository.getNearbySpbu(destCoord)
+                _calculationResult.value = _calculationResult.value?.copy(nearbySpbu = realSpbuList)
+            }
+        }
+    }
+
     // CRUD Vehicle (Offline via Room untuk kendaraan pengguna kustom)
     fun addVehicle(name: String, type: String, efficiency: BigDecimal) {
         viewModelScope.launch(Dispatchers.IO) {
