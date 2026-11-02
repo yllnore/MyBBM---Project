@@ -32,33 +32,32 @@ fun SuccessToast(
 ) {
     Box(
         modifier = Modifier
-            .width(213.dp)
-            .height(64.dp)
+            .width(270.dp)
+            .height(72.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 22.dp, bottomEnd = 22.dp)
             )
             .background(
                 color = Color(0xFFF1EFFF),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 22.dp, bottomEnd = 22.dp)
             )
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = 16.dp)
     ) {
         // Teks "Berhasil ditambahkan!"
         Text(
             text = "Berhasil ditambahkan!",
             style = TextStyle(
-                fontSize = 16.sp,
+                fontSize = 17.sp,
                 fontFamily = FontFamily.Default,
                 fontWeight = FontWeight(700),
                 color = Color(0xFF090F59),
                 textAlign = TextAlign.Center
             ),
             modifier = Modifier
-                .width(163.dp)
-                .height(18.dp)
                 .align(Alignment.Center)
+                .padding(horizontal = 20.dp)
         )
 
         // Icon Close Vector Bawaan
@@ -67,9 +66,9 @@ fun SuccessToast(
             contentDescription = "Close",
             tint = Color(0xFF6051BF),
             modifier = Modifier
-                .size(18.dp)
+                .size(22.dp)
                 .align(Alignment.TopEnd)
-                .padding(top = 4.dp, end = 2.dp)
+                .padding(top = 6.dp, end = 4.dp)
                 .clickable { onCloseClick() }
         )
     }

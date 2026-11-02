@@ -14,7 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -51,8 +56,7 @@ fun SettingsScreen(
                     color = Color(0xFFCCC7FB),
                     shape = RoundedCornerShape(size = 27.dp)
                 )
-                .width(412.dp)
-                .height(917.dp)
+                .fillMaxSize()
                 .background(color = Color(0xFFECEBFF), shape = RoundedCornerShape(size = 27.dp))
         ) {
             // Container Bagian Atas (Header Ungu)
@@ -64,7 +68,7 @@ fun SettingsScreen(
                         shape = RoundedCornerShape(topStart = 27.dp, topEnd = 27.dp)
                     )
             ) {
-                // 1. Status Bar (Jam)
+                // 1. Status Bar Spacer
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -72,27 +76,17 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                 }
 
-                // 2. Header Bar (Tombol Back & Judul "Pengaturan")
+                // 2. Header Bar (Judul "Pengaturan" & Tombol Silang Close Bulat seperti di Riwayat Perjalanan)
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .width(412.dp)
+                        .fillMaxWidth()
                         .height(66.dp)
-                        .padding(start = 20.dp, end = 24.dp, bottom = 12.dp)
+                        .padding(start = 24.dp, end = 20.dp, bottom = 12.dp)
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.back),
-                        contentDescription = "Back",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .size(29.dp)
-                            .clickable { onBackClick() }
-                    )
-
                     Text(
                         text = "Pengaturan",
                         style = TextStyle(
@@ -102,6 +96,23 @@ fun SettingsScreen(
                             color = Color(0xFF090F59)
                         )
                     )
+
+                    // Tombol Close Bulat (Silang X) persis seperti di Riwayat Perjalanan (Histori)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(color = Color(0xFFCCC9F4), shape = CircleShape)
+                    ) {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color(0xFF090F59),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -110,7 +121,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(19.dp, Alignment.Top),
                 horizontalAlignment = Alignment.Start,
                 modifier = Modifier
-                    .width(412.dp)
+                    .fillMaxWidth()
                     .padding(start = 20.dp, top = 27.dp, end = 20.dp)
             ) {
                 // Item 1: Kendaraan
@@ -158,7 +169,7 @@ fun SettingMenuItem(
                 color = Color(0xFFCCC9F4),
                 shape = RoundedCornerShape(size = 21.dp)
             )
-            .width(372.dp)
+            .fillMaxWidth()
             .height(95.dp)
             .background(color = Color(0xFFF1EFFF), shape = RoundedCornerShape(size = 21.dp))
             .padding(start = 16.dp, end = 20.dp)

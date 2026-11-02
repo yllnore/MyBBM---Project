@@ -17,11 +17,12 @@ import com.mybbm.app.viewmodel.BbmViewModel
 
 @Composable
 fun SettingsScreen(viewModel: BbmViewModel) {
-    val fuelPrices by viewModel.fuelPrices.collectAsState()
+    val fuels by viewModel.fuels.collectAsState()
     val vehicles by viewModel.vehicles.collectAsState()
 
     var showAddVehicleDialog by remember { mutableStateOf(false) }
-    var editFuelType by remember { mutableStateOf<String?>(null) }
+    var editFuelId by remember { mutableStateOf<String?>(null) }
+    var editFuelName by remember { mutableStateOf<String?>(null) }
     var editPriceText by remember { mutableStateOf("") }
 
     var newVehicleName by remember { mutableStateOf("") }
@@ -54,14 +55,14 @@ fun SettingsScreen(viewModel: BbmViewModel) {
                         Text(text = "Sesuaikan harga referensi BBM wilayah Kaltim.", style = MaterialTheme.typography.bodySmall)
                         HorizontalDivider()
 
-                        fuelPrices.forEach { fuel ->
+                        fuels.forEach { fuel ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text(text = fuel.fuelType, style = MaterialTheme.typography.bodyLarge)
+                                    Text(text = fuel.name, style = MaterialTheme.typography.bodyLarge)
                                     Text(
                                         text = FuelCalculator.formatRupiah(fuel.pricePerLiter),
                                         style = MaterialTheme.typography.titleSmall,
@@ -69,7 +70,8 @@ fun SettingsScreen(viewModel: BbmViewModel) {
                                     )
                                 }
                                 TextButton(onClick = {
-                                    editFuelType = fuel.fuelType
+                                    editFuelId = fuel.id
+                                    editFuelName = fuel.name
                                     editPriceText = fuel.pricePerLiter.toInt().toString()
                                 }) {
                                     Icon(Icons.Default.Edit, contentDescription = null)
@@ -115,7 +117,7 @@ fun SettingsScreen(viewModel: BbmViewModel) {
                             Text(text = "Jenis: ${vehicle.type} | Konsumsi: ${vehicle.fuelEfficiency} km/L", style = MaterialTheme.typography.bodySmall)
                         }
                         if (!vehicle.isDefault) {
-                            IconButton(onClick = { viewModel.deleteVehicle(vehicle) }) {
+                            IconButton(onClick = { viewModel.deleteVehicle(vehicle.id) }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error)
                             }
                         } else {
@@ -128,10 +130,13 @@ fun SettingsScreen(viewModel: BbmViewModel) {
     }
 
     // Edit Fuel Price Dialog
-    if (editFuelType != null) {
+    if (editFuelId != null && editFuelName != null) {
         AlertDialog(
-            onDismissRequest = { editFuelType = null },
-            title = { Text("Ubah Harga ${editFuelType}") },
+            onDismissRequest = {
+                editFuelId = null
+                editFuelName = null
+            },
+            title = { Text("Ubah Harga ${editFuelName}") },
             text = {
                 OutlinedTextField(
                     value = editPriceText,
@@ -144,15 +149,19 @@ fun SettingsScreen(viewModel: BbmViewModel) {
                 TextButton(onClick = {
                     val price = editPriceText.toDoubleOrNull()
                     if (price != null && price >= 0) {
-                        viewModel.updateFuelPrice(editFuelType!!, price)
+                        viewModel.updateFuel(editFuelId!!, editFuelName!!, java.math.BigDecimal.valueOf(price))
                     }
-                    editFuelType = null
+                    editFuelId = null
+                    editFuelName = null
                 }) {
                     Text("Simpan")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { editFuelType = null }) {
+                TextButton(onClick = {
+                    editFuelId = null
+                    editFuelName = null
+                }) {
                     Text("Batal")
                 }
             }
@@ -184,7 +193,7 @@ fun SettingsScreen(viewModel: BbmViewModel) {
                 TextButton(onClick = {
                     val eff = newVehicleEfficiency.toDoubleOrNull()
                     if (newVehicleName.isNotBlank() && eff != null && eff > 0) {
-                        viewModel.addVehicle(newVehicleName, newVehicleType, eff)
+                        viewModel.addVehicle(newVehicleName, newVehicleType, java.math.BigDecimal.valueOf(eff))
                         newVehicleName = ""
                         newVehicleEfficiency = ""
                         showAddVehicleDialog = false

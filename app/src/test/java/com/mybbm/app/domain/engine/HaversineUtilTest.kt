@@ -9,22 +9,21 @@ import java.math.BigDecimal
 class HaversineUtilTest {
 
     @Test
-    fun titikSamaMenghasilkanJarakNol() {
-        val titik = LatLng(-0.502106, 117.153709) // Samarinda
-        val jarak = HaversineUtil.hitungJarakKm(titik, titik)
-        assertEquals(BigDecimal("0.00"), jarak)
-    }
-
-    @Test
-    fun estimasiSamarindaKeBalikpapan() {
-        // Samarinda (-0.502106, 117.153709) ke Balikpapan (-1.265386, 116.831200)
-        // Garis lurus ~ 92 km. Dengan faktor 1.3 ~ 119-120 km.
+    fun testHitungJarakKm_samarindaKeBalikpapan() {
         val samarinda = LatLng(-0.502106, 117.153709)
         val balikpapan = LatLng(-1.265386, 116.831200)
 
-        val jarakEstimasi = HaversineUtil.hitungJarakKm(samarinda, balikpapan)
+        val jarakKm = HaversineUtil.hitungJarakKm(samarinda, balikpapan)
+        // Jarak lurus ~92 km, dengan faktor jalan 1.25 -> ~115 km
+        assertTrue(jarakKm > BigDecimal("100.0"))
+        assertTrue(jarakKm < BigDecimal("130.0"))
+    }
 
-        assertTrue(jarakEstimasi > BigDecimal("100.00"))
-        assertTrue(jarakEstimasi < BigDecimal("150.00"))
+    @Test
+    fun testHitungJarakKm_titikSama() {
+        val titik = LatLng(-0.502106, 117.153709)
+        val jarakKm = HaversineUtil.hitungJarakKm(titik, titik)
+        assertEquals(BigDecimal("0.00"), jarakKm)
     }
 }
+

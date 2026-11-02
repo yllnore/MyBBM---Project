@@ -18,8 +18,7 @@ import java.util.*
 
 @Composable
 fun HistoryScreen(viewModel: BbmViewModel) {
-    val historyList by viewModel.history.collectAsState()
-    val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
+    val historyList by viewModel.histories.collectAsState()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -37,7 +36,7 @@ fun HistoryScreen(viewModel: BbmViewModel) {
             ) {
                 Text(text = "Riwayat Perjalanan", style = MaterialTheme.typography.headlineMedium)
                 if (historyList.isNotEmpty()) {
-                    TextButton(onClick = { viewModel.clearAllHistory() }) {
+                    TextButton(onClick = { viewModel.confirmDeleteAllHistory() }) {
                         Text("Hapus Semua", color = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -78,11 +77,11 @@ fun HistoryScreen(viewModel: BbmViewModel) {
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(
-                                        text = "${item.originName} ➔ ${item.destinationName}",
+                                        text = "${item.origin} ➔ ${item.destination}",
                                         style = MaterialTheme.typography.titleMedium
                                     )
                                     IconButton(
-                                        onClick = { viewModel.deleteHistoryItem(item) },
+                                        onClick = { viewModel.deleteHistory(item.id) },
                                         modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(
@@ -93,13 +92,13 @@ fun HistoryScreen(viewModel: BbmViewModel) {
                                     }
                                 }
                                 Text(
-                                    text = dateFormatter.format(Date(item.timestamp)),
+                                    text = item.formattedDate,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.outline
                                 )
                                 HorizontalDivider()
                                 Text(text = "Jarak: ${FuelCalculator.formatDistance(item.distanceKm)} | Kendaraan: ${item.vehicleName}")
-                                Text(text = "BBM: ${item.fuelType} (${FuelCalculator.formatLiters(item.totalLiters)})")
+                                Text(text = "BBM: ${item.fuelName} (${FuelCalculator.formatLiters(item.totalLiters)})")
                                 Text(
                                     text = "Biaya: ${FuelCalculator.formatRupiah(item.totalCost)}",
                                     style = MaterialTheme.typography.titleSmall,

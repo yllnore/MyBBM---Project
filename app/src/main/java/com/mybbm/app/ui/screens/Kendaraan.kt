@@ -24,6 +24,8 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,13 +40,21 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
+import com.mybbm.app.domain.model.VehicleModel
+import com.mybbm.app.util.FuelCalculator
+import com.mybbm.app.viewmodel.BbmViewModel
 
 @Composable
 fun VehicleSettingsScreen(
     onBackClick: () -> Unit = {},
     onAddClick: () -> Unit = {},
-    onEditVehicleClick: (String) -> Unit = {}
+    onEditVehicleClick: (String) -> Unit = {},
+    viewModel: BbmViewModel? = null
 ) {
+    val vehicles by (viewModel?.vehicles?.collectAsState() ?: androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(emptyList())
+    })
+
     // Outer Frame Canvas (412.dp x 917.dp)
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -59,8 +69,7 @@ fun VehicleSettingsScreen(
                     color = Color(0xFFCCC7FB),
                     shape = RoundedCornerShape(size = 27.dp)
                 )
-                .width(412.dp)
-                .height(917.dp)
+                .fillMaxSize()
                 .background(color = Color(0xFFECEBFF), shape = RoundedCornerShape(size = 27.dp))
         ) {
             // Container Bagian Atas (Header Ungu)
@@ -72,7 +81,7 @@ fun VehicleSettingsScreen(
                         shape = RoundedCornerShape(topStart = 27.dp, topEnd = 27.dp)
                     )
             ) {
-                // Status Bar (Jam & Indikator Sinyal/WiFi/Baterai)
+                // Status Bar / Spacer
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -80,13 +89,6 @@ fun VehicleSettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.Start),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                    }
                 }
 
                 // Title Bar (Kembali, Judul "Kendaraan", & Tambah (+))
@@ -94,7 +96,7 @@ fun VehicleSettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .width(412.dp)
+                        .fillMaxWidth()
                         .height(66.dp)
                         .padding(start = 20.dp, end = 20.dp, bottom = 12.dp)
                 ) {
@@ -129,7 +131,13 @@ fun VehicleSettingsScreen(
                         tint = Color(0xFF090F59),
                         modifier = Modifier
                             .size(28.dp)
-                            .clickable { onAddClick() }
+                            .clickable {
+                                if (viewModel != null) {
+                                    viewModel.showAddVehicleDialog.value = true
+                                } else {
+                                    onAddClick()
+                                }
+                            }
                     )
                 }
             }
@@ -139,57 +147,73 @@ fun VehicleSettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.Top),
                 horizontalAlignment = Alignment.Start,
                 modifier = Modifier
-                    .width(412.dp)
+                    .fillMaxWidth()
                     .padding(start = 19.dp, top = 20.dp, end = 20.dp, bottom = 20.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                // 1. AVANZA (Mobil)
-                VehicleCardItem(
-                    name = "AVANZA",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.mobil,
-                    onEditClick = { onEditVehicleClick("AVANZA") }
-                )
-
-                // 2. TOYOTA (Mobil)
-                VehicleCardItem(
-                    name = "TOYOTA",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.mobil,
-                    onEditClick = { onEditVehicleClick("TOYOTA") }
-                )
-
-                // 3. HONDA (Mobil)
-                VehicleCardItem(
-                    name = "HONDA",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.mobil,
-                    onEditClick = { onEditVehicleClick("HONDA") }
-                )
-
-                // 4. HONDA BEAT (Motor)
-                VehicleCardItem(
-                    name = "HONDA BEAT",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.motor,
-                    onEditClick = { onEditVehicleClick("HONDA BEAT") }
-                )
-
-                // 5. HONDA VARIO (Motor)
-                VehicleCardItem(
-                    name = "HONDA VARIO",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.motor,
-                    onEditClick = { onEditVehicleClick("HONDA VARIO") }
-                )
-
-                // 6. NMAX (Motor)
-                VehicleCardItem(
-                    name = "NMAX",
-                    consumption = "X.X X/XXkm",
-                    iconRes = R.drawable.motor,
-                    onEditClick = { onEditVehicleClick("NMAX") }
-                )
+                if (vehicles.isEmpty()) {
+                    // Default fallback visual sesuai Figma
+                    VehicleCardItem(
+                        name = "AVANZA",
+                        consumption = "12.5 km/L",
+                        iconRes = R.drawable.mobil,
+                        onEditClick = { onEditVehicleClick("AVANZA") }
+                    )
+                    VehicleCardItem(
+                        name = "TOYOTA",
+                        consumption = "14.0 km/L",
+                        iconRes = R.drawable.mobil,
+                        onEditClick = { onEditVehicleClick("TOYOTA") }
+                    )
+                    VehicleCardItem(
+                        name = "HONDA",
+                        consumption = "15.0 km/L",
+                        iconRes = R.drawable.mobil,
+                        onEditClick = { onEditVehicleClick("HONDA") }
+                    )
+                    VehicleCardItem(
+                        name = "HONDA BEAT",
+                        consumption = "55.0 km/L",
+                        iconRes = R.drawable.motor,
+                        onEditClick = { onEditVehicleClick("HONDA BEAT") }
+                    )
+                    VehicleCardItem(
+                        name = "HONDA VARIO",
+                        consumption = "48.0 km/L",
+                        iconRes = R.drawable.motor,
+                        onEditClick = { onEditVehicleClick("HONDA VARIO") }
+                    )
+                    VehicleCardItem(
+                        name = "NMAX",
+                        consumption = "40.0 km/L",
+                        iconRes = R.drawable.motor,
+                        onEditClick = { onEditVehicleClick("NMAX") }
+                    )
+                    VehicleCardItem(
+                        name = "FAZZIO",
+                        consumption = "50.0 km/L",
+                        iconRes = R.drawable.motor,
+                        onEditClick = { onEditVehicleClick("FAZZIO") }
+                    )
+                } else {
+                    vehicles.forEach { v ->
+                        val iconRes = if (v.type.equals("Motor", ignoreCase = true)) R.drawable.motor else R.drawable.mobil
+                        val consumptionFormatted = "${FuelCalculator.formatEfficiency(v.fuelEfficiency)} km/L"
+                        VehicleCardItem(
+                            name = v.name,
+                            consumption = consumptionFormatted,
+                            iconRes = iconRes,
+                            onEditClick = {
+                                if (viewModel != null) {
+                                    viewModel.vehicleToEditOrDelete.value = v
+                                    viewModel.showEditVehicleDialog.value = true
+                                } else {
+                                    onEditVehicleClick(v.name)
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -216,10 +240,10 @@ fun VehicleCardItem(
                 color = Color(0xFFCCC9F4),
                 shape = RoundedCornerShape(size = 21.dp)
             )
-            .width(373.dp)
+            .fillMaxWidth()
             .height(95.dp)
             .background(color = Color(0xFFF1EFFF), shape = RoundedCornerShape(size = 21.dp))
-            .padding(start = 16.dp, end = 20.dp)
+            .padding(start = 16.dp, end = 12.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -266,15 +290,20 @@ fun VehicleCardItem(
             }
         }
 
-        // Icon Pensil Edit
-        Icon(
-            imageVector = Icons.Outlined.Edit,
-            contentDescription = "Edit $name",
-            tint = Color(0xFF090F59),
+        // Icon Pensil Edit dengan area sentuh yang nyaman
+        Box(
             modifier = Modifier
-                .size(20.dp)
-                .clickable { onEditClick() }
-        )
+                .size(44.dp)
+                .clickable { onEditClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Edit,
+                contentDescription = "Edit $name",
+                tint = Color(0xFF090F59),
+                modifier = Modifier.size(22.dp)
+            )
+        }
     }
 }
 

@@ -159,6 +159,12 @@ fun MengaturLokasiAwalScreen(
                 )
             }
 
+            HorizontalDivider(
+                color = Color.Black,
+                thickness = 1.dp,
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Spacer(modifier = Modifier.height(24.dp))
         }
     }

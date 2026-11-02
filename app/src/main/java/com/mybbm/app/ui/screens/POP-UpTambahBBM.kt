@@ -7,13 +7,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -21,42 +25,46 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mybbm.app.util.FuelCalculator
+import java.math.BigDecimal
 
 @Composable
 fun AddBbmDialog(
-    onSimpanClick: () -> Unit = {},
+    onSimpanClick: (name: String, price: BigDecimal) -> Unit = { _, _ -> },
     onBatalClick: () -> Unit = {}
 ) {
-    // Card Container Utama (Ukuran 256.dp x 170.dp)
+    var nameInput by remember { mutableStateOf("") }
+    var priceInput by remember { mutableStateOf("") }
+
     Box(
         modifier = Modifier
-            .width(256.dp)
-            .height(170.dp)
+            .width(320.dp)
+            .height(260.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                shape = RoundedCornerShape(16.dp)
             )
             .background(
                 color = Color(0xFFF1EFFF),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                shape = RoundedCornerShape(16.dp)
             )
-            .padding(vertical = 8.dp),
+            .padding(vertical = 18.dp, horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
         ) {
-            // Judul Dialog
             Text(
                 text = "Tambah BBM Baru",
                 style = TextStyle(
-                    fontSize = 16.sp,
+                    fontSize = 18.sp,
                     fontFamily = FontFamily.Default,
                     fontWeight = FontWeight(700),
                     color = Color(0xFF090F59),
@@ -65,22 +73,28 @@ fun AddBbmDialog(
             )
 
             // Input Field 1: Nama Jenis BBM
-            BbmDialogInputField(
+            DialogInputField(
+                value = nameInput,
+                onValueChange = { nameInput = it },
                 placeholder = "Nama Jenis BBM",
-                heightDp = 26.dp
+                heightDp = 38.dp
             )
 
-            // Input Field 2: Harga BBM km/L
-            BbmDialogInputField(
-                placeholder = "Harga BBM km/L",
-                heightDp = 27.dp
+            // Input Field 2: Harga BBM per Liter (Otomatis format ribuan titik seperti 12.500)
+            DialogInputField(
+                value = priceInput,
+                onValueChange = { priceInput = FuelCalculator.formatDigitsAsThousand(it) },
+                placeholder = "Harga BBM per Liter (misal 12.500)",
+                heightDp = 38.dp,
+                keyboardType = KeyboardType.Number
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Baris Tombol Simpan & Batal
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 2.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 // Tombol Simpan (Biru)
                 Box(
@@ -89,21 +103,25 @@ fun AddBbmDialog(
                             elevation = 2.2.dp,
                             spotColor = Color(0x40000000),
                             ambientColor = Color(0x40000000),
-                            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                            shape = RoundedCornerShape(16.dp)
                         )
-                        .width(95.dp)
-                        .height(27.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFF5DB1E7),
-                            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                            shape = RoundedCornerShape(16.dp)
                         )
-                        .clickable { onSimpanClick() },
+                        .clickable {
+                            val price = FuelCalculator.parseThousand(priceInput) ?: BigDecimal("10000")
+                            val finalName = nameInput.ifBlank { "BBM BARU" }
+                            onSimpanClick(finalName, price)
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Simpan",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFFFFFFFF)
@@ -118,13 +136,13 @@ fun AddBbmDialog(
                             elevation = 2.2.dp,
                             spotColor = Color(0x40000000),
                             ambientColor = Color(0x40000000),
-                            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                            shape = RoundedCornerShape(16.dp)
                         )
-                        .width(95.dp)
-                        .height(27.dp)
+                        .width(120.dp)
+                        .height(38.dp)
                         .background(
                             color = Color(0xFFE6E6E6),
-                            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+                            shape = RoundedCornerShape(16.dp)
                         )
                         .clickable { onBatalClick() },
                     contentAlignment = Alignment.Center
@@ -132,7 +150,7 @@ fun AddBbmDialog(
                     Text(
                         text = "Batal",
                         style = TextStyle(
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
                             fontWeight = FontWeight(700),
                             color = Color(0xFF090F59)
@@ -144,44 +162,8 @@ fun AddBbmDialog(
     }
 }
 
-@Composable
-fun BbmDialogInputField(
-    placeholder: String,
-    heightDp: androidx.compose.ui.unit.Dp
-) {
-    Box(
-        modifier = Modifier
-            .width(209.dp)
-            .height(heightDp)
-            .border(
-                width = 1.dp,
-                color = Color(0xFFBFB7FA),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
-            )
-            .padding(horizontal = 14.dp),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Text(
-            text = placeholder,
-            style = TextStyle(
-                fontSize = 12.sp,
-                fontFamily = FontFamily.Default,
-                fontWeight = FontWeight(400),
-                color = Color(0xFF606995)
-            )
-        )
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun AddBbmDialogPreview() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        AddBbmDialog()
-    }
+    AddBbmDialog()
 }
