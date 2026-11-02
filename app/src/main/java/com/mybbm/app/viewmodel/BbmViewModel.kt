@@ -112,6 +112,29 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedFuel = MutableStateFlow<FuelModel?>(null)
     val selectedFuel: StateFlow<FuelModel?> = _selectedFuel.asStateFlow()
 
+    // Map Camera Persistence Across Navigation
+    private val _homeMapCenter = MutableStateFlow<LatLng?>(null)
+    val homeMapCenter: StateFlow<LatLng?> = _homeMapCenter.asStateFlow()
+
+    private val _homeMapZoom = MutableStateFlow<Double?>(null)
+    val homeMapZoom: StateFlow<Double?> = _homeMapZoom.asStateFlow()
+
+    private val _resultMapCenter = MutableStateFlow<LatLng?>(null)
+    val resultMapCenter: StateFlow<LatLng?> = _resultMapCenter.asStateFlow()
+
+    private val _resultMapZoom = MutableStateFlow<Double?>(null)
+    val resultMapZoom: StateFlow<Double?> = _resultMapZoom.asStateFlow()
+
+    fun updateHomeMapCamera(center: LatLng, zoom: Double) {
+        _homeMapCenter.value = center
+        _homeMapZoom.value = zoom
+    }
+
+    fun updateResultMapCamera(center: LatLng, zoom: Double) {
+        _resultMapCenter.value = center
+        _resultMapZoom.value = zoom
+    }
+
     // Koordinat Asal & Tujuan untuk peta OSM
     private val _originCoord = MutableStateFlow<LatLng?>(null)
     val originCoord: StateFlow<LatLng?> = _originCoord.asStateFlow()
@@ -319,6 +342,8 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         _activeSearchList.value = emptyList()
         _isSearchingLocation.value = false
         _isDetectingLocation.value = false
+        _resultMapCenter.value = null
+        _resultMapZoom.value = null
     }
 
     fun setOrigin(value: String) {

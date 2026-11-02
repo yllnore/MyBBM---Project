@@ -48,6 +48,8 @@ fun ResultScreen(
     val originCoord by viewModel.originCoord.collectAsState()
     val destinationCoord by viewModel.destinationCoord.collectAsState()
     val routePoints by viewModel.routePoints.collectAsState()
+    val resultMapCenter by viewModel.resultMapCenter.collectAsState()
+    val resultMapZoom by viewModel.resultMapZoom.collectAsState()
 
     val configuration = LocalConfiguration.current
     val screenHeightPx = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
@@ -69,6 +71,11 @@ fun ResultScreen(
                 .padding(bottom = 260.dp),
             centerCoordinate = LatLng(-0.5021, 117.1536),
             zoomLevel = 12.0,
+            savedCameraCenter = resultMapCenter,
+            savedCameraZoom = resultMapZoom,
+            onCameraMoved = { center, zoom ->
+                viewModel.updateResultMapCamera(center, zoom)
+            },
             originCoordinate = originCoord,
             originLabel = result?.originName ?: "Asal",
             destinationCoordinate = destinationCoord,

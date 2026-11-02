@@ -21,6 +21,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mybbm.app.R
 import com.mybbm.app.domain.model.LatLng
 import org.osmdroid.config.Configuration
+import org.osmdroid.events.MapListener
+import org.osmdroid.events.ScrollEvent
+import org.osmdroid.events.ZoomEvent
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
@@ -90,6 +93,9 @@ fun OsmMapView(
     modifier: Modifier = Modifier,
     centerCoordinate: LatLng = LatLng(-0.5021, 117.1536), // Samarinda (Polnes)
     zoomLevel: Double = 13.0,
+    savedCameraCenter: LatLng? = null,
+    savedCameraZoom: Double? = null,
+    onCameraMoved: ((center: LatLng, zoom: Double) -> Unit)? = null,
     originCoordinate: LatLng? = null,
     originLabel: String? = null,
     destinationCoordinate: LatLng? = null,
@@ -113,6 +119,9 @@ fun OsmMapView(
         onDispose { }
     }
 
+    val initialCenter = savedCameraCenter ?: centerCoordinate
+    val initialZoom = savedCameraZoom ?: zoomLevel
+
     // Instansiasi MapView yang di-remembered
     val mapView = remember {
         MapView(context).apply {
@@ -123,8 +132,22 @@ fun OsmMapView(
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
-            controller.setZoom(zoomLevel)
-            controller.setCenter(GeoPoint(centerCoordinate.lat, centerCoordinate.lng))
+            controller.setZoom(initialZoom)
+            controller.setCenter(GeoPoint(initialCenter.lat, initialCenter.lng))
+
+            addMapListener(object : MapListener {
+                override fun onScroll(event: ScrollEvent?): Boolean {
+                    val c = mapCenter
+                    onCameraMoved?.invoke(LatLng(c.latitude, c.longitude), zoomLevelDouble)
+                    return false
+                }
+
+                override fun onZoom(event: ZoomEvent?): Boolean {
+                    val c = mapCenter
+                    onCameraMoved?.invoke(LatLng(c.latitude, c.longitude), zoomLevelDouble)
+                    return false
+                }
+            })
 
             // Poles warna tile OSM agar bernuansa terang, bersih, dan selaras dengan tema #E8ECEF / #ECEBFF
             val colorMatrix = ColorMatrix().apply {
@@ -178,7 +201,7 @@ fun OsmMapView(
         factory = { mapView },
         update = { map ->
             val cameraTriggerChanged = cameraTrigger != 0L && cameraTrigger != lastCameraTrigger
-            val shouldAutoFit = (currentRouteKey != autoFittedRouteKey) && (originCoordinate != null || destinationCoordinate != null)
+            val shouldAutoFit = (savedCameraCenter == null && currentRouteKey != autoFittedRouteKey) && (originCoordinate != null || destinationCoordinate != null)
 
             map.overlays.clear()
 

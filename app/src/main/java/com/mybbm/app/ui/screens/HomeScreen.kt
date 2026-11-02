@@ -105,6 +105,8 @@ fun HomeScreen(
     val destination by viewModel.destination.collectAsState()
     val originCoord by viewModel.originCoord.collectAsState()
     val destinationCoord by viewModel.destinationCoord.collectAsState()
+    val homeMapCenter by viewModel.homeMapCenter.collectAsState()
+    val homeMapZoom by viewModel.homeMapZoom.collectAsState()
     val routePoints by viewModel.routePoints.collectAsState()
     val estimatedDistanceKm by viewModel.estimatedDistanceKm.collectAsState()
     val selectedVehicle by viewModel.selectedVehicle.collectAsState()
@@ -363,6 +365,11 @@ fun HomeScreen(
                 },
             centerCoordinate = LatLng(-0.5021, 117.1536), // Samarinda (Polnes)
             zoomLevel = 12.5,
+            savedCameraCenter = homeMapCenter,
+            savedCameraZoom = homeMapZoom,
+            onCameraMoved = { center, zoom ->
+                viewModel.updateHomeMapCamera(center, zoom)
+            },
             originCoordinate = originCoord,
             originLabel = origin.ifBlank { "Lokasi Asal" },
             destinationCoordinate = destinationCoord,
