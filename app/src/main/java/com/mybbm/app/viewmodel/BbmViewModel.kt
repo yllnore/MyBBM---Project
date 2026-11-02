@@ -791,4 +791,11 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
             showDeleteHistoryDialog.value = false
         }
     }
+
+    fun clearAllHistory() {
+        viewModelScope.launch(Dispatchers.IO) {
+            riwayatDao.deleteAllRiwayat()
+            _toastMessage.value = "Semua riwayat berhasil dihapus!"
+        }
+    }
 }

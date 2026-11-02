@@ -79,20 +79,42 @@ fun HistoriScreen(
                     )
                 )
 
-                // Tombol Close Bulat
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(color = Color(0xFFCCC9F4), shape = CircleShape)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onCloseClick) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = Color(0xFF090F59),
-                            modifier = Modifier.size(18.dp)
-                        )
+                    if (histories.isNotEmpty()) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(color = Color(0xFFCCC9F4), shape = CircleShape)
+                                .clickable { viewModel?.clearAllHistory() }
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.hapus),
+                                contentDescription = "Hapus Semua",
+                                tint = Color(0xFF090F59),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    // Tombol Close Bulat
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(color = Color(0xFFCCC9F4), shape = CircleShape)
+                    ) {
+                        IconButton(onClick = onCloseClick) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color(0xFF090F59),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
