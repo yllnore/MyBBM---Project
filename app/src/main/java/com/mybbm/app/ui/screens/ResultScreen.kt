@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
 import com.mybbm.app.domain.model.LatLng
 import com.mybbm.app.domain.model.SpbuInfo
+import com.mybbm.app.ui.components.MapVisualOverlay
 import com.mybbm.app.ui.components.OsmMapView
 import com.mybbm.app.util.FuelCalculator
 import com.mybbm.app.viewmodel.BbmViewModel
@@ -61,90 +62,82 @@ fun ResultScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // 1. Peta OSM Asli dengan Rute Garis (Polyline) dan Penanda
-        Box(
+        // 1. Tampilan Visual Overlay Map (Layer Paling Belakang dengan Skema Terang #E8ECEF / #ECEBFF & Polyline Halus #7542EF)
+        MapVisualOverlay(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 260.dp)
-        ) {
-            OsmMapView(
-                modifier = Modifier.fillMaxSize(),
-                centerCoordinate = LatLng(-0.5021, 117.1536),
-                zoomLevel = 12.0,
-                originCoordinate = originCoord,
-                originLabel = result?.originName ?: "Asal",
-                destinationCoordinate = destinationCoord,
-                destinationLabel = result?.destinationName ?: "Tujuan",
-                routePoints = result?.routePoints?.ifEmpty { routePoints } ?: routePoints
-            )
+                .padding(bottom = 260.dp),
+            originLabel = result?.originName ?: "Asal",
+            destinationLabel = result?.destinationName ?: "Tujuan"
+        )
 
-            // Back button on top left of map
+        // 2. Tombol Navigasi & Aksi Melayang di Atas Map (Di bawah Bottom Sheet)
+        // Back button on top left of map
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 40.dp, start = 16.dp)
+                .size(44.dp)
+                .shadow(4.dp, CircleShape)
+                .background(Color.White, CircleShape)
+                .clickable { onNavigateBack() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Kembali",
+                tint = Color(0xFF090F59),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        // Top Right Floating Action Buttons (FABs)
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 40.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 40.dp, start = 16.dp)
-                    .size(44.dp)
-                    .shadow(4.dp, CircleShape)
-                    .background(Color.White, CircleShape)
-                    .clickable { onNavigateBack() },
+                    .size(48.dp)
+                    .shadow(6.dp, CircleShape)
+                    .background(Color(0xFFC0BEF8), CircleShape)
+                    .clickable { onNavigateToSettings() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Kembali",
-                    tint = Color(0xFF090F59),
+                Image(
+                    painter = painterResource(id = R.drawable.settings_icon),
+                    contentDescription = "Settings",
                     modifier = Modifier.size(24.dp)
                 )
             }
-
-            // Top Right Floating Action Buttons (FABs)
-            Column(
+            Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 40.dp, end = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .size(48.dp)
+                    .shadow(6.dp, CircleShape)
+                    .background(Color(0xFFC0BEF8), CircleShape)
+                    .clickable { onNavigateToHistory() },
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .shadow(6.dp, CircleShape)
-                        .background(Color(0xFFC0BEF8), CircleShape)
-                        .clickable { onNavigateToSettings() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.settings_icon),
-                        contentDescription = "Settings",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .shadow(6.dp, CircleShape)
-                        .background(Color(0xFFC0BEF8), CircleShape)
-                        .clickable { onNavigateToHistory() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.history),
-                        contentDescription = "Histori",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .shadow(6.dp, CircleShape)
-                        .background(Color(0xFFC0BEF8), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.current_location_icon),
-                        contentDescription = "Layer",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                Image(
+                    painter = painterResource(id = R.drawable.history),
+                    contentDescription = "Histori",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .shadow(6.dp, CircleShape)
+                    .background(Color(0xFFC0BEF8), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.current_location_icon),
+                    contentDescription = "Layer",
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
 

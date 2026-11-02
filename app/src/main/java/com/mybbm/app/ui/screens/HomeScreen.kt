@@ -54,6 +54,7 @@ import com.mybbm.app.R
 import com.mybbm.app.data.remote.supabase.SupabaseDefaultRepository
 import com.mybbm.app.domain.model.LatLng
 import com.mybbm.app.domain.model.SearchSuggestionItem
+import com.mybbm.app.ui.components.MapVisualOverlay
 import com.mybbm.app.ui.components.OsmMapView
 import com.mybbm.app.util.DeviceLocationHelper
 import com.mybbm.app.viewmodel.BbmViewModel
@@ -348,29 +349,20 @@ fun HomeScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Latar Belakang Peta OSM Interaktif
-        OsmMapView(
+        // 1. Tampilan Visual Overlay Map (Layer Paling Belakang dengan Skema Terang #E8ECEF / #ECEBFF & Polyline Halus #7542EF)
+        MapVisualOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .clickable {
-                    // Tap di map menutup saran dan meng-collapse panel
+                    // Tap di area canvas peta menutup saran dan meng-collapse panel
                     coroutineScope.launch {
                         bottomSheetState.collapse()
                         activeMode = ActiveInputMode.NONE
                         viewModel.clearSearchResults()
                     }
                 },
-            centerCoordinate = LatLng(-0.5021, 117.1536), // Samarinda (Polnes)
-            zoomLevel = 13.0,
-            originCoordinate = originCoord,
             originLabel = origin.ifBlank { "Lokasi Asal" },
-            destinationCoordinate = destinationCoord,
-            destinationLabel = destination.ifBlank { "Lokasi Tujuan" },
-            userLocationCoordinate = userLocationCoord,
-            cameraTarget = mapCameraTarget,
-            cameraZoom = 16.5,
-            cameraTrigger = mapCameraTrigger,
-            routePoints = routePoints
+            destinationLabel = destination.ifBlank { "Lokasi Tujuan" }
         )
 
         // Tombol Mengambang di Kanan Atas (FABs)

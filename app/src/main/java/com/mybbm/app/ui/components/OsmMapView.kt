@@ -153,7 +153,7 @@ fun OsmMapView(
                 // Layer A: Outer Glow (Tebal & Transparan untuk Efek Neon Glow)
                 val outerGlowPolyline = Polyline(map).apply {
                     setPoints(geoPoints)
-                    outlinePaint.color = android.graphics.Color.parseColor("#8A5CF6") // Ungu Neon Accent
+                    outlinePaint.color = android.graphics.Color.parseColor("#407542EF") // Ungu Neon Accent
                     outlinePaint.strokeWidth = 22f
                     outlinePaint.alpha = 100 // Semi-transparan glow
                     outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
@@ -162,7 +162,7 @@ fun OsmMapView(
                 // Layer B: Inner Line (Garis Utama Tajam & Terang)
                 val innerPolyline = Polyline(map).apply {
                     setPoints(geoPoints)
-                    outlinePaint.color = android.graphics.Color.parseColor("#EC4899") // Pink Magenta Bright
+                    outlinePaint.color = android.graphics.Color.parseColor("#7542EF") // Pink Magenta Bright
                     outlinePaint.strokeWidth = 8f
                     outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
                 }
