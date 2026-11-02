@@ -83,26 +83,6 @@ fun ResultScreen(
             routePoints = result?.routePoints?.ifEmpty { routePoints } ?: routePoints
         )
 
-        // 2. Tombol Navigasi & Aksi Melayang di Atas Map (Di bawah Bottom Sheet)
-        // Back button on top left of map
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = 40.dp, start = 16.dp)
-                .size(44.dp)
-                .shadow(4.dp, CircleShape)
-                .background(Color.White, CircleShape)
-                .clickable { onNavigateBack() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Kembali",
-                tint = Color(0xFF090F59),
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
         // Top Right Floating Action Buttons (FABs)
         Column(
             modifier = Modifier

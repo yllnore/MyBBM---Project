@@ -36,6 +36,7 @@ fun MainAppScreen(viewModel: BbmViewModel) {
 
     val showDeleteHistory by viewModel.showDeleteHistoryDialog.collectAsState()
     val selectedHistoryToDelete by viewModel.historyToDelete.collectAsState()
+    val showDeleteAllHistory by viewModel.showDeleteAllHistoryDialog.collectAsState()
 
     // Auto-dismiss toast after 2.5 seconds
     LaunchedEffect(toastMessage) {
@@ -56,6 +57,7 @@ fun MainAppScreen(viewModel: BbmViewModel) {
             AppScreen.VEHICLES -> viewModel.navigateTo(AppScreen.SETTINGS)
             AppScreen.FUELS -> viewModel.navigateTo(AppScreen.SETTINGS)
             AppScreen.SETTINGS -> viewModel.navigateBack()
+            AppScreen.HISTORI -> viewModel.navigateBack()
             else -> viewModel.navigateBack()
         }
     }
@@ -115,7 +117,7 @@ fun MainAppScreen(viewModel: BbmViewModel) {
             }
             AppScreen.HISTORI -> {
                 HistoriScreen(
-                    onCloseClick = { viewModel.navigateTo(AppScreen.HOME) },
+                    onCloseClick = { viewModel.navigateBack() },
                     viewModel = viewModel
                 )
             }
@@ -231,6 +233,15 @@ fun MainAppScreen(viewModel: BbmViewModel) {
                     } ?: run {
                         viewModel.showDeleteHistoryDialog.value = false
                     }
+                }
+            )
+        }
+
+        if (showDeleteAllHistory) {
+            DeleteHistoryDialog(
+                onDismissRequest = { viewModel.showDeleteAllHistoryDialog.value = false },
+                onConfirmDelete = {
+                    viewModel.confirmDeleteAllHistory()
                 }
             )
         }

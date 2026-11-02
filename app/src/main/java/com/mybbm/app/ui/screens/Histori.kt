@@ -89,7 +89,7 @@ fun HistoriScreen(
                             modifier = Modifier
                                 .size(36.dp)
                                 .background(color = Color(0xFFCCC9F4), shape = CircleShape)
-                                .clickable { viewModel?.clearAllHistory() }
+                                .clickable { viewModel?.showDeleteAllHistoryDialog?.value = true }
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.hapus),

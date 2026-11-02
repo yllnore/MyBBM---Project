@@ -170,6 +170,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
     val showDeleteHistoryDialog = MutableStateFlow(false)
     val historyToDelete = MutableStateFlow<HistoryModel?>(null)
+    val showDeleteAllHistoryDialog = MutableStateFlow(false)
 
     // Flow Data Kustom Pengguna dari Room (Offline)
     private val customVehiclesFlow: Flow<List<VehicleModel>> = kendaraanKustomDao.getAllKendaraanKustom()
@@ -792,10 +793,11 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun clearAllHistory() {
+    fun confirmDeleteAllHistory() {
         viewModelScope.launch(Dispatchers.IO) {
             riwayatDao.deleteAllRiwayat()
             _toastMessage.value = "Semua riwayat berhasil dihapus!"
+            showDeleteAllHistoryDialog.value = false
         }
     }
 }
