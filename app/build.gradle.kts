@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -6,8 +9,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
-import java.io.FileInputStream
-import java.util.Properties
 
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")

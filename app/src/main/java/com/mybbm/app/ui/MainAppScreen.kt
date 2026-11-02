@@ -55,7 +55,8 @@ fun MainAppScreen(viewModel: BbmViewModel) {
             AppScreen.ABOUT -> viewModel.navigateTo(AppScreen.SETTINGS)
             AppScreen.VEHICLES -> viewModel.navigateTo(AppScreen.SETTINGS)
             AppScreen.FUELS -> viewModel.navigateTo(AppScreen.SETTINGS)
-            else -> viewModel.navigateTo(AppScreen.HOME)
+            AppScreen.SETTINGS -> viewModel.navigateBack()
+            else -> viewModel.navigateBack()
         }
     }
 
@@ -85,7 +86,7 @@ fun MainAppScreen(viewModel: BbmViewModel) {
             }
             AppScreen.SETTINGS -> {
                 SettingsScreen(
-                    onBackClick = { viewModel.navigateTo(AppScreen.HOME) },
+                    onBackClick = { viewModel.navigateBack() },
                     onMenuItemClick = { item ->
                         when (item) {
                             "Kendaraan" -> viewModel.navigateTo(AppScreen.VEHICLES)

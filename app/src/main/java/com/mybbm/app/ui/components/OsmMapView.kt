@@ -3,27 +3,46 @@ package com.mybbm.app.ui.components
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.mybbm.app.R
 import com.mybbm.app.domain.model.LatLng
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.tileprovider.tilesource.XYTileSource
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
+
+/**
+ * Konversi vector drawable (R.drawable.lokasi_awal / lokasi_tujuan) menjadi BitmapDrawable
+ * agar dapat dipakai sebagai ikon pin marker yang tajam pada OSM MapView.
+ */
+private fun createCustomPinDrawable(context: Context, resId: Int, widthDp: Int = 30, heightDp: Int = 40): Drawable {
+    val drawable = ContextCompat.getDrawable(context, resId) ?: return BitmapDrawable(context.resources)
+    val density = context.resources.displayMetrics.density
+    val widthPx = (widthDp * density).toInt()
+    val heightPx = (heightDp * density).toInt()
+    val bitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    drawable.setBounds(0, 0, widthPx, heightPx)
+    drawable.draw(canvas)
+    return BitmapDrawable(context.resources, bitmap)
+}
 
 /**
  * Membuat drawable marker kustom untuk penanda "Lokasi Anda Saat Ini" (GPS Blue Dot + Halo)
@@ -34,9 +53,9 @@ private fun createUserLocationDrawable(context: Context): Drawable {
     val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
 
-    // 1. Lingkaran luar transparan (efek radar halo)
+    // 1. Lingkaran luar transparan (efek radar halo ungu)
     val outerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.argb(70, 31, 107, 232)
+        color = android.graphics.Color.argb(70, 117, 66, 239) // Ungu #7542EF halo
         style = Paint.Style.FILL
     }
     canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f, outerPaint)
@@ -48,9 +67,9 @@ private fun createUserLocationDrawable(context: Context): Drawable {
     }
     canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx * 0.38f, ringPaint)
 
-    // 3. Titik biru cerah di tengah
+    // 3. Titik ungu cerah di tengah
     val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.rgb(31, 107, 232)
+        color = android.graphics.Color.rgb(117, 66, 239)
         style = Paint.Style.FILL
     }
     canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx * 0.28f, dotPaint)
@@ -59,8 +78,11 @@ private fun createUserLocationDrawable(context: Context): Drawable {
 }
 
 /**
- * Komponen Compose yang membungkus osmdroid [MapView] dengan lifecycle-aware,
- * dukungan multi-touch gesture zoom, penanda lokasi (markers), dan polyline rute.
+ * Komponen Compose yang membungkus osmdroid [MapView] interaktif.
+ * Menggunakan OpenStreetMap resmi (100% gratis tanpa API key),
+ * dipoles dengan ColorFilter skema warna terang estetik (#E8ECEF / #ECEBFF),
+ * marker Asal Merah & Tujuan Biru, garis polyline rute ungu (#7542EF),
+ * serta auto-fit BoundingBox cerdas agar seluruh rute dan pin kelihatan di layar.
  */
 @Composable
 fun OsmMapView(
@@ -75,36 +97,46 @@ fun OsmMapView(
     cameraTarget: LatLng? = null,
     cameraZoom: Double = 16.5,
     cameraTrigger: Long = 0L,
-    routePoints: List<LatLng> = emptyList(),
-    routeColor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(0xFF1F6BE8)
+    routePoints: List<LatLng> = emptyList()
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Inisialisasi User-Agent dan cache OSM sekali agar tile peta tidak diblokir server OSM
+    // Inisialisasi User-Agent dan cache OSM
     DisposableEffect(Unit) {
         val config = Configuration.getInstance()
         config.load(context, context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
-        
-        // Set User-Agent yang valid agar server OSM/CartoDB tidak reject request
         config.userAgentValue = "MyBBM/1.0 Android"
-        
-        // Set cache path ke internal storage app (tidak butuh storage permission)
         config.osmdroidBasePath = context.filesDir
         config.osmdroidTileCache = java.io.File(context.filesDir, "osmdroid/tiles")
-        
         onDispose { }
     }
 
     // Instansiasi MapView yang di-remembered
     val mapView = remember {
         MapView(context).apply {
-            // OSM Default (STABLE & TESTED - Tile pasti jalan)
+            // Latar belakang netral terang (#E8ECEF)
+            setBackgroundColor(android.graphics.Color.parseColor("#E8ECEF"))
+
+            // Gunakan TileSourceFactory.MAPNIK (Server Resmi OpenStreetMap - 100% Gratis & Tanpa API Key)
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
             controller.setZoom(zoomLevel)
             controller.setCenter(GeoPoint(centerCoordinate.lat, centerCoordinate.lng))
+
+            // Poles warna tile OSM agar bernuansa terang, bersih, dan selaras dengan tema #E8ECEF / #ECEBFF
+            val colorMatrix = ColorMatrix().apply {
+                setSaturation(0.45f)
+                val brightMatrix = floatArrayOf(
+                    0.88f, 0f,    0f,    0f, 40f,
+                    0f,    0.88f, 0f,    0f, 40f,
+                    0f,    0f,    0.95f, 0f, 50f,
+                    0f,    0f,    0f,    1f, 0f
+                )
+                postConcat(ColorMatrix(brightMatrix))
+            }
+            overlayManager.tilesOverlay.setColorFilter(ColorMatrixColorFilter(colorMatrix))
         }
     }
 
@@ -125,16 +157,18 @@ fun OsmMapView(
         }
     }
 
-    // State untuk mencatat perubahan koordinat agar animasi kamera tidak terpanggil berulang kali saat recompose
     var lastOrigin by remember { mutableStateOf<LatLng?>(null) }
     var lastDestination by remember { mutableStateOf<LatLng?>(null) }
     var lastRoutePointsSize by remember { mutableIntStateOf(0) }
     var lastCameraTrigger by remember { mutableLongStateOf(0L) }
+    var isFirstComposition by remember { mutableStateOf(true) }
 
-    // Icon lokasi pengguna
+    // Ikon Marker: Asal (Merah), Tujuan (Biru), dan Lokasi GPS Saat Ini (Ungu Radar)
+    val originIcon = remember(context) { createCustomPinDrawable(context, R.drawable.lokasi_awal, 30, 40) }
+    val destIcon = remember(context) { createCustomPinDrawable(context, R.drawable.lokasi_tujuan, 30, 40) }
     val userLocationIcon = remember(context) { createUserLocationDrawable(context) }
 
-    // Perbarui overlay (marker & polyline) ketika data rute/marker berubah
+    // Perbarui overlay (marker & polyline ungu #7542EF) ketika data berubah
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { mapView },
@@ -143,50 +177,53 @@ fun OsmMapView(
             val destChanged = destinationCoordinate != lastDestination
             val routeChanged = routePoints.size != lastRoutePointsSize
             val cameraTriggerChanged = cameraTrigger != 0L && cameraTrigger != lastCameraTrigger
+            val shouldAutoFit = (originChanged || destChanged || routeChanged) && (originCoordinate != null || destinationCoordinate != null)
 
             map.overlays.clear()
 
-            // 1. Gambar Garis Rute (Polyline 2-Layer Glowing Neon) jika tersedia
+            // 1. Gambar Garis Rute (Polyline Halus Warna Ungu #7542EF)
+            // HANYA MUNCUL KETIKA SUDAH HITUNG BIAYA / RUTE ADA (routePoints tidak kosong)
             if (routePoints.isNotEmpty()) {
                 val geoPoints = routePoints.map { GeoPoint(it.lat, it.lng) }
-                
-                // Layer A: Outer Glow (Tebal & Transparan untuk Efek Neon Glow)
+
+                // Layer A: Outer Glow Ungu Utama (#7542EF Semi-Transparan)
                 val outerGlowPolyline = Polyline(map).apply {
                     setPoints(geoPoints)
-                    outlinePaint.color = android.graphics.Color.parseColor("#407542EF") // Ungu Neon Accent
-                    outlinePaint.strokeWidth = 22f
-                    outlinePaint.alpha = 100 // Semi-transparan glow
-                    outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+                    outlinePaint.color = android.graphics.Color.parseColor("#407542EF")
+                    outlinePaint.strokeWidth = 20f
+                    outlinePaint.strokeCap = Paint.Cap.ROUND
                 }
 
-                // Layer B: Inner Line (Garis Utama Tajam & Terang)
+                // Layer B: Garis Utama Tajam Halus (#7542EF)
                 val innerPolyline = Polyline(map).apply {
                     setPoints(geoPoints)
-                    outlinePaint.color = android.graphics.Color.parseColor("#7542EF") // Pink Magenta Bright
+                    outlinePaint.color = android.graphics.Color.parseColor("#7542EF")
                     outlinePaint.strokeWidth = 8f
-                    outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+                    outlinePaint.strokeCap = Paint.Cap.ROUND
                 }
 
                 map.overlays.add(outerGlowPolyline)
                 map.overlays.add(innerPolyline)
             }
 
-            // 2. Tambahkan Marker Asal
+            // 2. Tambahkan Marker Asal (Pin Merah Sesuai Input Field Asal)
             if (originCoordinate != null) {
                 val originMarker = Marker(map).apply {
                     position = GeoPoint(originCoordinate.lat, originCoordinate.lng)
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                     title = originLabel ?: "Lokasi Asal"
+                    icon = originIcon
                 }
                 map.overlays.add(originMarker)
             }
 
-            // 3. Tambahkan Marker Tujuan
+            // 3. Tambahkan Marker Tujuan (Pin Biru Sesuai Input Field Tujuan)
             if (destinationCoordinate != null) {
                 val destMarker = Marker(map).apply {
                     position = GeoPoint(destinationCoordinate.lat, destinationCoordinate.lng)
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                     title = destinationLabel ?: "Lokasi Tujuan"
+                    icon = destIcon
                 }
                 map.overlays.add(destMarker)
             }
@@ -202,7 +239,7 @@ fun OsmMapView(
                 map.overlays.add(userMarker)
             }
 
-            // Atur zoom dan animasi kamera: prioritas utama jika ada pemicu pemusatan manual
+            // 5. Atur Kamera, Zoom, dan Auto-Fit Rute agar Titik Awal & Tujuan Kelihatan Semua
             if (cameraTriggerChanged) {
                 lastCameraTrigger = cameraTrigger
                 val target = cameraTarget ?: userLocationCoordinate
@@ -211,22 +248,62 @@ fun OsmMapView(
                     map.controller.setZoom(cameraZoom)
                     map.controller.animateTo(targetGeo)
                 }
-            } else if (originChanged || destChanged || routeChanged) {
+            } else if (shouldAutoFit) {
                 if (originCoordinate != null && destinationCoordinate != null) {
-                    // Posisi tengah di antara asal dan tujuan
-                    val midLat = (originCoordinate.lat + destinationCoordinate.lat) / 2
-                    val midLng = (originCoordinate.lng + destinationCoordinate.lng) / 2
-                    map.controller.setCenter(GeoPoint(midLat, midLng))
-                    map.controller.setZoom(12.0)
+                    // Kumpulkan semua titik (rute polyline + asal + tujuan) untuk menghitung BoundingBox
+                    val allPoints = mutableListOf<GeoPoint>()
+                    if (routePoints.isNotEmpty()) {
+                        allPoints.addAll(routePoints.map { GeoPoint(it.lat, it.lng) })
+                    }
+                    allPoints.add(GeoPoint(originCoordinate.lat, originCoordinate.lng))
+                    allPoints.add(GeoPoint(destinationCoordinate.lat, destinationCoordinate.lng))
+
+                    var minLat = Double.MAX_VALUE
+                    var maxLat = -Double.MAX_VALUE
+                    var minLng = Double.MAX_VALUE
+                    var maxLng = -Double.MAX_VALUE
+
+                    for (p in allPoints) {
+                        if (p.latitude < minLat) minLat = p.latitude
+                        if (p.latitude > maxLat) maxLat = p.latitude
+                        if (p.longitude < minLng) minLng = p.longitude
+                        if (p.longitude > maxLng) maxLng = p.longitude
+                    }
+
+                    val latSpan = (maxLat - minLat).coerceAtLeast(0.02)
+                    val lngSpan = (maxLng - minLng).coerceAtLeast(0.02)
+
+                    // Berikan padding margin agar pin dan rute tidak menempel ke tepi layar
+                    val boundingBox = BoundingBox(
+                        maxLat + (latSpan * 0.22),
+                        maxLng + (lngSpan * 0.22),
+                        minLat - (latSpan * 0.22),
+                        minLng - (lngSpan * 0.22)
+                    )
+
+                    val density = context.resources.displayMetrics.density
+                    val paddingPx = (50 * density).toInt()
+
+                    map.post {
+                        try {
+                            map.zoomToBoundingBox(boundingBox, true, paddingPx)
+                        } catch (e: Exception) {
+                            // Fallback jika view belum siap
+                            val midLat = (originCoordinate.lat + destinationCoordinate.lat) / 2
+                            val midLng = (originCoordinate.lng + destinationCoordinate.lng) / 2
+                            map.controller.setCenter(GeoPoint(midLat, midLng))
+                            map.controller.setZoom(9.5)
+                        }
+                    }
                 } else if (originCoordinate != null) {
                     val originGeo = GeoPoint(originCoordinate.lat, originCoordinate.lng)
-                    map.controller.setZoom(17.5) // Zoom dekat tingkat jalan/gang/blok
+                    map.controller.setZoom(17.5)
                     map.controller.animateTo(originGeo)
                 } else if (destinationCoordinate != null) {
                     val destGeo = GeoPoint(destinationCoordinate.lat, destinationCoordinate.lng)
                     map.controller.setZoom(17.5)
                     map.controller.animateTo(destGeo)
-                } else {
+                } else if (isFirstComposition) {
                     map.controller.setCenter(GeoPoint(centerCoordinate.lat, centerCoordinate.lng))
                     map.controller.setZoom(zoomLevel)
                 }
@@ -235,9 +312,9 @@ fun OsmMapView(
             lastOrigin = originCoordinate
             lastDestination = destinationCoordinate
             lastRoutePointsSize = routePoints.size
+            isFirstComposition = false
 
             map.invalidate()
         }
     )
 }
-

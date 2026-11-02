@@ -349,20 +349,29 @@ fun HomeScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // 1. Tampilan Visual Overlay Map (Layer Paling Belakang dengan Skema Terang #E8ECEF / #ECEBFF & Polyline Halus #7542EF)
-        MapVisualOverlay(
+        // 1. Latar Belakang Peta OSM Interaktif (Tema Terang #E8ECEF / #ECEBFF & Polyline Halus #7542EF)
+        OsmMapView(
             modifier = Modifier
                 .fillMaxSize()
                 .clickable {
-                    // Tap di area canvas peta menutup saran dan meng-collapse panel
+                    // Tap di area peta menutup saran dan meng-collapse panel
                     coroutineScope.launch {
                         bottomSheetState.collapse()
                         activeMode = ActiveInputMode.NONE
                         viewModel.clearSearchResults()
                     }
                 },
+            centerCoordinate = LatLng(-0.5021, 117.1536), // Samarinda (Polnes)
+            zoomLevel = 12.5,
+            originCoordinate = originCoord,
             originLabel = origin.ifBlank { "Lokasi Asal" },
-            destinationLabel = destination.ifBlank { "Lokasi Tujuan" }
+            destinationCoordinate = destinationCoord,
+            destinationLabel = destination.ifBlank { "Lokasi Tujuan" },
+            userLocationCoordinate = userLocationCoord,
+            cameraTarget = mapCameraTarget,
+            cameraZoom = 16.5,
+            cameraTrigger = mapCameraTrigger,
+            routePoints = routePoints
         )
 
         // Tombol Mengambang di Kanan Atas (FABs)

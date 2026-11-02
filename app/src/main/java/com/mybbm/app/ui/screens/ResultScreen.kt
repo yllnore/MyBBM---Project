@@ -62,13 +62,18 @@ fun ResultScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // 1. Tampilan Visual Overlay Map (Layer Paling Belakang dengan Skema Terang #E8ECEF / #ECEBFF & Polyline Halus #7542EF)
-        MapVisualOverlay(
+        // 1. Latar Belakang Peta OSM Interaktif (Tema Terang #E8ECEF / #ECEBFF & Polyline Halus #7542EF)
+        OsmMapView(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = 260.dp),
+            centerCoordinate = LatLng(-0.5021, 117.1536),
+            zoomLevel = 12.0,
+            originCoordinate = originCoord,
             originLabel = result?.originName ?: "Asal",
-            destinationLabel = result?.destinationName ?: "Tujuan"
+            destinationCoordinate = destinationCoord,
+            destinationLabel = result?.destinationName ?: "Tujuan",
+            routePoints = result?.routePoints?.ifEmpty { routePoints } ?: routePoints
         )
 
         // 2. Tombol Navigasi & Aksi Melayang di Atas Map (Di bawah Bottom Sheet)
