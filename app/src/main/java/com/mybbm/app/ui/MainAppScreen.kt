@@ -53,11 +53,6 @@ fun MainAppScreen(viewModel: BbmViewModel) {
                 viewModel.resetTripForm()
                 viewModel.navigateTo(AppScreen.HOME)
             }
-            AppScreen.ABOUT -> viewModel.navigateTo(AppScreen.SETTINGS)
-            AppScreen.VEHICLES -> viewModel.navigateTo(AppScreen.SETTINGS)
-            AppScreen.FUELS -> viewModel.navigateTo(AppScreen.SETTINGS)
-            AppScreen.SETTINGS -> viewModel.navigateTo(AppScreen.HOME)
-            AppScreen.HISTORI -> viewModel.navigateTo(AppScreen.HOME)
             else -> viewModel.navigateBack()
         }
     }
@@ -107,18 +102,18 @@ fun MainAppScreen(viewModel: BbmViewModel) {
             }
             AppScreen.ABOUT -> {
                 TentangMyBbmScreen(
-                    onBackClick = { viewModel.navigateTo(AppScreen.SETTINGS) }
+                    onBackClick = { viewModel.navigateBack() }
                 )
             }
             AppScreen.VEHICLES -> {
                 VehicleSettingsScreen(
-                    onBackClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
+                    onBackClick = { viewModel.navigateBack() },
                     viewModel = viewModel
                 )
             }
             AppScreen.FUELS -> {
                 BbmSettingsScreen(
-                    onBackClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
+                    onBackClick = { viewModel.navigateBack() },
                     viewModel = viewModel
                 )
             }

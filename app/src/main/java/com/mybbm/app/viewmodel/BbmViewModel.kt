@@ -361,21 +361,19 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private val _previousScreen = MutableStateFlow<AppScreen?>(null)
-    val previousScreen: StateFlow<AppScreen?> = _previousScreen.asStateFlow()
+    private val screenBackStack = mutableListOf<AppScreen>()
 
     fun navigateTo(screen: AppScreen) {
         if (_currentScreen.value != screen) {
-            _previousScreen.value = _currentScreen.value
+            screenBackStack.add(_currentScreen.value)
             _currentScreen.value = screen
         }
     }
 
     fun navigateBack() {
-        val prev = _previousScreen.value
-        if (prev != null && prev != AppScreen.SETTINGS && prev != AppScreen.ABOUT) {
+        if (screenBackStack.isNotEmpty()) {
+            val prev = screenBackStack.removeAt(screenBackStack.size - 1)
             _currentScreen.value = prev
-            _previousScreen.value = AppScreen.HOME
         } else {
             _currentScreen.value = AppScreen.HOME
         }
