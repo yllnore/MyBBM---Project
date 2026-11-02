@@ -10,6 +10,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -157,6 +158,9 @@ fun OsmMapView(
         }
     }
 
+    var autoFittedRouteKey by rememberSaveable { mutableStateOf("") }
+    val currentRouteKey = "${originCoordinate?.lat},${originCoordinate?.lng}_${destinationCoordinate?.lat},${destinationCoordinate?.lng}_${routePoints.size}"
+
     var lastOrigin by remember { mutableStateOf<LatLng?>(null) }
     var lastDestination by remember { mutableStateOf<LatLng?>(null) }
     var lastRoutePointsSize by remember { mutableIntStateOf(0) }
@@ -173,11 +177,8 @@ fun OsmMapView(
         modifier = modifier.fillMaxSize(),
         factory = { mapView },
         update = { map ->
-            val originChanged = originCoordinate != lastOrigin
-            val destChanged = destinationCoordinate != lastDestination
-            val routeChanged = routePoints.size != lastRoutePointsSize
             val cameraTriggerChanged = cameraTrigger != 0L && cameraTrigger != lastCameraTrigger
-            val shouldAutoFit = (originChanged || destChanged || routeChanged) && (originCoordinate != null || destinationCoordinate != null)
+            val shouldAutoFit = (currentRouteKey != autoFittedRouteKey) && (originCoordinate != null || destinationCoordinate != null)
 
             map.overlays.clear()
 
@@ -249,6 +250,7 @@ fun OsmMapView(
                     map.controller.animateTo(targetGeo)
                 }
             } else if (shouldAutoFit) {
+                autoFittedRouteKey = currentRouteKey
                 if (originCoordinate != null && destinationCoordinate != null) {
                     // Kumpulkan semua titik (rute polyline + asal + tujuan) untuk menghitung BoundingBox
                     val allPoints = mutableListOf<GeoPoint>()
