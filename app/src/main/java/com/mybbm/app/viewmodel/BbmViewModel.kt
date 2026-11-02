@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -229,15 +230,19 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
                     totalLiters = BigDecimal.valueOf(it.totalLiter),
                     fuelName = it.namaBbm,
                     vehicleName = it.namaKendaraan,
-                    formattedDate = sdf.format(Date(it.timestamp))
+                    formattedDate = sdf.format(Date(it.timestamp)),
+                    originLat = it.originLat,
+                    originLng = it.originLng,
+                    destLat = it.destLat,
+                    destLng = it.destLng
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Kamus koordinat kota dan titik penting di Kalimantan Timur
     private val locationCoordinates = mapOf(
-        "polnes" to LatLng(-0.502106, 117.153709),
-        "politeknik negeri samarinda" to LatLng(-0.502106, 117.153709),
+        "polnes" to LatLng(-0.536500, 117.128500),
+        "politeknik negeri samarinda" to LatLng(-0.536500, 117.128500),
         "samarinda" to LatLng(-0.502106, 117.153709),
         "samarinda seberang" to LatLng(-0.525000, 117.123000),
         "big mall" to LatLng(-0.520556, 117.120556),
@@ -617,7 +622,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
             )
             _calculationResult.value = result
 
-            // Simpan otomatis ke Room Riwayat (100% Offline)
+            // Simpan otomatis ke Room Riwayat (100% Offline) dengan koordinat presisi asli
             val riwayat = RiwayatEntity(
                 id = UUID.randomUUID().toString(),
                 lokasiAsal = result.originName,
@@ -627,7 +632,11 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
                 timestamp = System.currentTimeMillis(),
                 totalLiter = output.totalLiters.toDouble(),
                 namaKendaraan = vehicle.name,
-                namaBbm = fuel.name
+                namaBbm = fuel.name,
+                originLat = originCoord.lat,
+                originLng = originCoord.lng,
+                destLat = destCoord.lat,
+                destLng = destCoord.lng
             )
             riwayatDao.insertRiwayat(riwayat)
 
@@ -649,31 +658,47 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         _origin.value = item.origin
         _destination.value = item.destination
 
-        val originCoord = resolveCoordinate(item.origin, isOrigin = true)
-        val destCoord = resolveCoordinate(item.destination, isOrigin = false)
+        // Reset saved map camera agar ResultScreen melakukan animasi zoom-out/zoom-in auto-fit mencakup kedua pin
+        _resultMapCenter.value = null
+        _resultMapZoom.value = null
+
+        // Gunakan koordinat asli yang tersimpan presisi di riwayat (tanpa tebak-tebakan)
+        val originCoord = LatLng(item.originLat, item.originLng)
+        val destCoord = LatLng(item.destLat, item.destLng)
         _originCoord.value = originCoord
         _destinationCoord.value = destCoord
 
+        // Cari kendaraan dan jenis BBM yang sesuai dengan riwayat
+        val matchingVehicle = vehicles.value.find { it.name.equals(item.vehicleName, true) }
+            ?: _defaultKendaraan.value.find { it.name.equals(item.vehicleName, true) }
+            ?: VehicleModel("hist", item.vehicleName, "Mobil", BigDecimal("15.0"))
+
+        val matchingFuel = fuels.value.find { it.name.equals(item.fuelName, true) }
+            ?: _defaultBbm.value.find { it.name.equals(item.fuelName, true) }
+            ?: FuelModel("hist", item.fuelName, if (item.totalLiters > BigDecimal.ZERO) item.totalCost.divide(item.totalLiters, 0, RoundingMode.HALF_UP) else BigDecimal("10000"))
+
+        _selectedVehicle.value = matchingVehicle
+        _selectedFuel.value = matchingFuel
+
         viewModelScope.launch {
+            // Ambil rute OSRM riil agar kedua pin (asal & tujuan) serta garis rute muncul sempurna di peta
             val route = try {
                 osrmRouteRepository.getDrivingRoute(originCoord, destCoord)
             } catch (_: Exception) {
                 null
             }
 
-            val routePts = route?.polylinePoints ?: listOf(originCoord, destCoord)
+            val routePts = route?.polylinePoints?.ifEmpty { listOf(originCoord, destCoord) } ?: listOf(originCoord, destCoord)
             _routePoints.value = routePts
 
-            val vehicle = _selectedVehicle.value ?: VehicleModel("1", item.vehicleName, "Mobil", BigDecimal("15.0"))
-            val fuel = _selectedFuel.value ?: FuelModel("1", item.fuelName, BigDecimal("12500"))
-
+            // Gunakan 100% data historis asli untuk biaya dan jarak, dengan routePoints yang lengkap
             val result = CalculationResult(
-                originName = item.origin,
-                destinationName = item.destination,
+                originName = item.origin.ifBlank { "Lokasi Asal" },
+                destinationName = item.destination.ifBlank { "Lokasi Tujuan" },
                 vehicleName = item.vehicleName,
                 fuelType = item.fuelName,
-                fuelEfficiency = vehicle.fuelEfficiency,
-                pricePerLiter = fuel.pricePerLiter,
+                fuelEfficiency = matchingVehicle.fuelEfficiency,
+                pricePerLiter = matchingFuel.pricePerLiter,
                 distanceKm = item.distanceKm,
                 totalLiters = item.totalLiters,
                 totalCost = item.totalCost,

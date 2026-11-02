@@ -31,38 +31,38 @@ class LocationRepository(
             LocationSearchResult(
                 name = "POLNES - Politeknik Negeri Samarinda",
                 displayName = "Jalan Cipto Mangunkusumo, Gunung Panjang, Kota Samarinda, Kalimantan Timur, Indonesia",
-                lat = -0.502106,
-                lon = 117.153709
+                lat = -0.536500,
+                lon = 117.128500
             ),
             LocationSearchResult(
                 name = "Kemaritiman Polnes",
                 displayName = "Sungai Keledang, Kota Samarinda, Kalimantan Timur, Indonesia",
-                lat = -0.503410,
-                lon = 117.152800
+                lat = -0.537500,
+                lon = 117.127500
             ),
             LocationSearchResult(
                 name = "Direktorat POLNES",
                 displayName = "Sungai Keledang, Kota Samarinda, Kalimantan Timur, Indonesia",
-                lat = -0.501500,
-                lon = 117.154200
+                lat = -0.536000,
+                lon = 117.129000
             ),
             LocationSearchResult(
                 name = "Gedung Auditorium (Serba Guna) Polnes",
                 displayName = "POLNES - Politeknik Negeri Samarinda, Sungai Keledang, Kota Samarinda, Kalimantan Timur",
-                lat = -0.502800,
-                lon = 117.153900
+                lat = -0.536800,
+                lon = 117.128000
             ),
             LocationSearchResult(
                 name = "Gedung Teknologi Informasi POLNES",
                 displayName = "Kampus Polnes, Jl. Cipto Mangunkusumo, Gunung Panjang, Samarinda",
-                lat = -0.502400,
-                lon = 117.153500
+                lat = -0.536200,
+                lon = 117.128800
             ),
             LocationSearchResult(
                 name = "Perpustakaan Terpadu POLNES",
                 displayName = "Kampus Polnes, Jl. Cipto Mangunkusumo, Samarinda Seberang",
-                lat = -0.501900,
-                lon = 117.153800
+                lat = -0.536300,
+                lon = 117.128200
             ),
             LocationSearchResult(
                 name = "Universitas Mulawarman (UNMUL)",
@@ -144,15 +144,7 @@ class LocationRepository(
             return@withContext emptyList()
         }
 
-        // 1. Ambil titik relevan dari landmark yang cocok dengan kata kunci
-        val localMatches = KNOWN_LANDMARKS.filter {
-            it.name.contains(trimmedQuery, ignoreCase = true) ||
-            it.displayName.contains(trimmedQuery, ignoreCase = true) ||
-            (trimmedQuery.equals("polnes", ignoreCase = true) && (it.name.contains("polnes", ignoreCase = true) || it.displayName.contains("polnes", ignoreCase = true))) ||
-            (trimmedQuery.equals("unmul", ignoreCase = true) && (it.name.contains("mulawarman", ignoreCase = true) || it.displayName.contains("mulawarman", ignoreCase = true)))
-        }
-
-        // 2. Ekspansi query pencarian Nominatim untuk hasil lebih luas
+        // 1. Prioritaskan Pencarian LIVE via Nominatim API (Online dengan Internet)
         val expandedQuery = when (trimmedQuery.lowercase()) {
             "polnes" -> "Politeknik Negeri Samarinda"
             "unmul" -> "Universitas Mulawarman"
@@ -165,10 +157,9 @@ class LocationRepository(
             expandedQuery
         }
 
-        // Endpoint Nominatim: format=json&countrycodes=id&limit=10
         val url = "$BASE_URL?q=$encodedQuery&format=json&countrycodes=id&limit=10"
-
         val nominatimResults = mutableListOf<LocationSearchResult>()
+
         try {
             val request = Request.Builder()
                 .url(url)
@@ -206,25 +197,22 @@ class LocationRepository(
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching locations from Nominatim: ${e.message}", e)
+            Log.w(TAG, "Tidak ada internet (Offline), beralih ke landmark offline.", e)
         }
 
-        // 3. Gabungkan hasil lokal relevan terlebih dahulu, lalu tambahkan hasil Nominatim tanpa duplikasi
-        val combined = mutableListOf<LocationSearchResult>()
-        combined.addAll(localMatches)
-
-        for (item in nominatimResults) {
-            val isDuplicate = combined.any { existing ->
-                existing.name.equals(item.name, ignoreCase = true) ||
-                (Math.abs(existing.lat - item.lat) < 0.0008 && Math.abs(existing.lon - item.lon) < 0.0008)
-            }
-            if (!isDuplicate) {
-                combined.add(item)
-            }
+        // 2. JIKA ADA INTERNET (Hasil Live Nominatim Ditemukan), KEMBALIKAN 100% HASIL LIVE INTERNET!
+        if (nominatimResults.isNotEmpty()) {
+            Log.d(TAG, "Online search for '$trimmedQuery' returned ${nominatimResults.size} live items")
+            return@withContext nominatimResults
         }
 
-        Log.d(TAG, "Search for '$trimmedQuery' returned ${combined.size} items")
-        return@withContext combined
+        // 3. JIKA OFFLINE / GAGAL (Tidak ada internet), BARU GUNAKAN FALLBACK HARDCODE (KNOWN_LANDMARKS)
+        val offlineMatches = KNOWN_LANDMARKS.filter {
+            it.name.contains(trimmedQuery, ignoreCase = true) ||
+            it.displayName.contains(trimmedQuery, ignoreCase = true)
+        }
+        Log.d(TAG, "Offline fallback search for '$trimmedQuery' returned ${offlineMatches.size} offline items")
+        return@withContext offlineMatches
     }
 
     /**

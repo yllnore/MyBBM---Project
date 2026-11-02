@@ -25,7 +25,11 @@ data class HistoryModel(
     val totalLiters: java.math.BigDecimal,
     val fuelName: String,
     val vehicleName: String,
-    val formattedDate: String
+    val formattedDate: String,
+    val originLat: Double = -0.502106,
+    val originLng: Double = 117.153709,
+    val destLat: Double = -1.265386,
+    val destLng: Double = 116.831200
 )
 
 data class SpbuInfo(

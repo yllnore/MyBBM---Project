@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -121,14 +122,15 @@ fun ResultScreen(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .shadow(6.dp, CircleShape)
-                    .background(Color(0xFFC0BEF8), CircleShape),
+                    .shadow(4.dp, CircleShape)
+                    .background(Color(0xFFE5E7EB), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.current_location_icon),
-                    contentDescription = "Layer",
-                    modifier = Modifier.size(24.dp)
+                    contentDescription = "Disabled",
+                    modifier = Modifier.size(24.dp),
+                    colorFilter = ColorFilter.tint(Color(0xFF9CA3AF))
                 )
             }
         }

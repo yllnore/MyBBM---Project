@@ -60,7 +60,15 @@ data class RiwayatEntity(
     @ColumnInfo(name = "nama_kendaraan")
     val namaKendaraan: String = "",
     @ColumnInfo(name = "nama_bbm")
-    val namaBbm: String = ""
+    val namaBbm: String = "",
+    @ColumnInfo(name = "origin_lat")
+    val originLat: Double = -0.502106,
+    @ColumnInfo(name = "origin_lng")
+    val originLng: Double = 117.153709,
+    @ColumnInfo(name = "dest_lat")
+    val destLat: Double = -1.265386,
+    @ColumnInfo(name = "dest_lng")
+    val destLng: Double = 116.831200
 )
 
 // Aliases untuk backward compatibility
