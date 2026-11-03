@@ -60,6 +60,12 @@ enum class AppScreen {
     INPUT_DESTINATION
 }
 
+enum class MapPickMode {
+    NONE,
+    ORIGIN,
+    DESTINATION
+}
+
 class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
     // 1. Offline Storage (Room Database - Data Milik Pengguna)
@@ -174,6 +180,51 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     val showDeleteHistoryDialog = MutableStateFlow(false)
     val historyToDelete = MutableStateFlow<HistoryModel?>(null)
     val showDeleteAllHistoryDialog = MutableStateFlow(false)
+
+    // Map Location Picker Mode State
+    private val _mapPickMode = MutableStateFlow(MapPickMode.NONE)
+    val mapPickMode: StateFlow<MapPickMode> = _mapPickMode.asStateFlow()
+
+    fun startPickingLocation(mode: MapPickMode) {
+        _mapPickMode.value = mode
+    }
+
+    fun cancelPickingLocation() {
+        _mapPickMode.value = MapPickMode.NONE
+    }
+
+    fun confirmPickedLocation(latLng: LatLng, addressName: String) {
+        val mode = _mapPickMode.value
+        if (mode == MapPickMode.ORIGIN) {
+            _origin.value = addressName
+            _originCoord.value = latLng
+            checkAndCalculateOsrmRoute()
+        } else if (mode == MapPickMode.DESTINATION) {
+            _destination.value = addressName
+            _destinationCoord.value = latLng
+            checkAndCalculateOsrmRoute()
+        }
+        _mapPickMode.value = MapPickMode.NONE
+    }
+
+    fun confirmPickedLocationWithReverseGeocode(latLng: LatLng, context: Context) {
+        val mode = _mapPickMode.value
+        if (mode == MapPickMode.NONE) return
+
+        viewModelScope.launch {
+            val address = try {
+                locationRepository.reverseGeocode(latLng.lat, latLng.lng)
+            } catch (_: Exception) {
+                null
+            }
+
+            val fallbackName = if (mode == MapPickMode.ORIGIN) "Lokasi Asal Dipilih" else "Lokasi Tujuan Dipilih"
+            val finalName = address ?: fallbackName
+
+            confirmPickedLocation(latLng, finalName)
+            showToast("Lokasi berhasil dipilih!")
+        }
+    }
 
     // Flow Data Kustom Pengguna dari Room (Offline)
     private val customVehiclesFlow: Flow<List<VehicleModel>> = kendaraanKustomDao.getAllKendaraanKustom()
@@ -311,21 +362,19 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private val _previousScreen = MutableStateFlow<AppScreen?>(null)
-    val previousScreen: StateFlow<AppScreen?> = _previousScreen.asStateFlow()
+    private val screenBackStack = mutableListOf<AppScreen>()
 
     fun navigateTo(screen: AppScreen) {
         if (_currentScreen.value != screen) {
-            _previousScreen.value = _currentScreen.value
+            screenBackStack.add(_currentScreen.value)
             _currentScreen.value = screen
         }
     }
 
     fun navigateBack() {
-        val prev = _previousScreen.value
-        if (prev != null && prev != AppScreen.SETTINGS && prev != AppScreen.ABOUT) {
+        if (screenBackStack.isNotEmpty()) {
+            val prev = screenBackStack.removeAt(screenBackStack.size - 1)
             _currentScreen.value = prev
-            _previousScreen.value = AppScreen.HOME
         } else {
             _currentScreen.value = AppScreen.HOME
         }
@@ -356,12 +405,23 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setOrigin(value: String) {
         _origin.value = value
-        _originCoord.value = resolveCoordinate(value, isOrigin = true)
-        updateRoutePreview()
+        if (value.isBlank()) {
+            _originCoord.value = null
+            _routePoints.value = emptyList()
+            _estimatedDistanceKm.value = null
+        } else {
+            _originCoord.value = resolveCoordinate(value, isOrigin = true)
+            updateRoutePreview()
+        }
     }
 
     fun setOriginText(value: String) {
         _origin.value = value
+        if (value.isBlank()) {
+            _originCoord.value = null
+            _routePoints.value = emptyList()
+            _estimatedDistanceKm.value = null
+        }
     }
 
     /**
@@ -388,12 +448,23 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setDestination(value: String) {
         _destination.value = value
-        _destinationCoord.value = resolveCoordinate(value, isOrigin = false)
-        updateRoutePreview()
+        if (value.isBlank()) {
+            _destinationCoord.value = null
+            _routePoints.value = emptyList()
+            _estimatedDistanceKm.value = null
+        } else {
+            _destinationCoord.value = resolveCoordinate(value, isOrigin = false)
+            updateRoutePreview()
+        }
     }
 
     fun setDestinationText(value: String) {
         _destination.value = value
+        if (value.isBlank()) {
+            _destinationCoord.value = null
+            _routePoints.value = emptyList()
+            _estimatedDistanceKm.value = null
+        }
     }
 
     /**

@@ -148,6 +148,7 @@ fun VehicleSettingsScreen(
                 horizontalAlignment = Alignment.Start,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .weight(1f)
                     .padding(start = 19.dp, top = 20.dp, end = 20.dp, bottom = 20.dp)
                     .verticalScroll(rememberScrollState())
             ) {

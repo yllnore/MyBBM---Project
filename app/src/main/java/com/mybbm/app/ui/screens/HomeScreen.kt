@@ -39,6 +39,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
@@ -58,6 +59,7 @@ import com.mybbm.app.ui.components.MapVisualOverlay
 import com.mybbm.app.ui.components.OsmMapView
 import com.mybbm.app.util.DeviceLocationHelper
 import com.mybbm.app.viewmodel.BbmViewModel
+import com.mybbm.app.viewmodel.MapPickMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -116,6 +118,7 @@ fun HomeScreen(
     val activeSearchList by viewModel.activeSearchList.collectAsState()
     val isSearchingLocation by viewModel.isSearchingLocation.collectAsState()
     val isDetectingLocation by viewModel.isDetectingLocation.collectAsState()
+    val mapPickMode by viewModel.mapPickMode.collectAsState()
     val context = LocalContext.current
 
     // 1. Auto-Expand BottomSheet State & Coroutine
@@ -351,10 +354,15 @@ fun HomeScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
+        val configuration = LocalConfiguration.current
+        val screenHeightDp = configuration.screenHeightDp.dp
+        val bottomSheetHeightDp = screenHeightDp * sheetHeightFraction
+
         // 1. Latar Belakang Peta OSM Interaktif (Tema Terang #E8ECEF / #ECEBFF & Polyline Halus #7542EF)
         OsmMapView(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(bottom = bottomSheetHeightDp)
                 .clickable {
                     // Tap di area peta menutup saran dan meng-collapse panel
                     coroutineScope.launch {
@@ -401,6 +409,59 @@ fun HomeScreen(
                 isLoading = isLocatingUser,
                 onClick = centerMapToCurrentLocation
             )
+        }
+
+        // Map Location Picker Overlay (Jika sedang mode pilih lokasi di peta)
+        if (mapPickMode != MapPickMode.NONE) {
+            // Pin statis di tengah area map yang terlihat (di atas bottom sheet)
+            // Bisa langsung dipencet/diklik untuk memilih lokasi!
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(screenHeightDp - bottomSheetHeightDp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .wrapContentSize()
+                        .clickable {
+                            val targetCoord = homeMapCenter ?: LatLng(-0.5021, 117.1536)
+                            viewModel.confirmPickedLocationWithReverseGeocode(targetCoord, context)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = if (mapPickMode == MapPickMode.ORIGIN) R.drawable.lokasi_awal else R.drawable.lokasi_tujuan),
+                        contentDescription = "Center Pin",
+                        modifier = Modifier.size(54.dp)
+                    )
+                }
+            }
+
+            // Tombol Konfirmasi di bawah
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 36.dp, start = 24.dp, end = 24.dp)
+            ) {
+                Button(
+                    onClick = {
+                        val targetCoord = homeMapCenter ?: LatLng(-0.5021, 117.1536)
+                        viewModel.confirmPickedLocationWithReverseGeocode(targetCoord, context)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7542EF)),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .shadow(8.dp, RoundedCornerShape(24.dp))
+                ) {
+                    Text(
+                        text = "Pilih Lokasi Ini",
+                        style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    )
+                }
+            }
         }
 
         // Panel Input Perjalanan (Draggable & Auto-Expand Bottom Sheet)
@@ -520,12 +581,27 @@ fun HomeScreen(
                     },
                     imeAction = ImeAction.Next,
                     onImeAction = {
+                        if (originTextFieldValue.text.isNotBlank()) {
+                            viewModel.setOrigin(originTextFieldValue.text)
+                        } else {
+                            viewModel.setOrigin("")
+                        }
                         activeMode = ActiveInputMode.DESTINATION
                         viewModel.clearSearchResults()
                         coroutineScope.launch {
                             bottomSheetState.expand()
                             delay(50L)
                             destinationFocusRequester.requestFocus()
+                        }
+                    },
+                    onIconClick = {
+                        coroutineScope.launch {
+                            if (mapPickMode == MapPickMode.ORIGIN) {
+                                viewModel.cancelPickingLocation()
+                            } else {
+                                bottomSheetState.collapse()
+                                viewModel.startPickingLocation(MapPickMode.ORIGIN)
+                            }
                         }
                     }
                 )
@@ -559,6 +635,8 @@ fun HomeScreen(
                     onImeAction = {
                         if (destinationTextFieldValue.text.isNotBlank()) {
                             viewModel.setDestination(destinationTextFieldValue.text)
+                        } else {
+                            viewModel.setDestination("")
                         }
                         viewModel.clearSearchResults()
                         activeMode = ActiveInputMode.VEHICLE
@@ -567,6 +645,16 @@ fun HomeScreen(
                             bottomSheetState.expand()
                             delay(50L)
                             vehicleFocusRequester.requestFocus()
+                        }
+                    },
+                    onIconClick = {
+                        coroutineScope.launch {
+                            if (mapPickMode == MapPickMode.DESTINATION) {
+                                viewModel.cancelPickingLocation()
+                            } else {
+                                bottomSheetState.collapse()
+                                viewModel.startPickingLocation(MapPickMode.DESTINATION)
+                            }
                         }
                     }
                 )
@@ -847,6 +935,9 @@ fun HomeScreen(
                                     .clickable {
                                         when (item) {
                                             is SearchSuggestionItem.Location -> {
+                                                mapCameraTarget = LatLng(item.searchResult.lat, item.searchResult.lon)
+                                                mapCameraTrigger = System.currentTimeMillis()
+
                                                 if (activeMode == ActiveInputMode.ORIGIN) {
                                                     viewModel.selectOriginResult(item.searchResult)
                                                     originTextFieldValue = TextFieldValue(item.title, selection = TextRange(item.title.length))
@@ -979,7 +1070,8 @@ private fun EditableInputField(
     onValueChange: (TextFieldValue) -> Unit,
     onFocusChanged: (Boolean) -> Unit,
     imeAction: ImeAction = ImeAction.Default,
-    onImeAction: () -> Unit = {}
+    onImeAction: () -> Unit = {},
+    onIconClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -1052,8 +1144,12 @@ private fun EditableInputField(
                 modifier = Modifier
                     .size(28.dp)
                     .clickable {
-                        focusRequester.requestFocus()
-                        onFocusChanged(true)
+                        if (onIconClick != null) {
+                            onIconClick()
+                        } else {
+                            focusRequester.requestFocus()
+                            onFocusChanged(true)
+                        }
                     }
             )
         }
