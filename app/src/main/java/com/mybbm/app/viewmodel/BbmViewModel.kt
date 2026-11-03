@@ -47,6 +47,8 @@ import java.util.Locale
 import java.util.UUID
 
 enum class AppScreen {
+    SPLASH,
+
     HOME,
     RESULT,
     SETTINGS,
@@ -95,7 +97,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     val isDetectingLocation: StateFlow<Boolean> = _isDetectingLocation.asStateFlow()
 
     // Navigation State
-    private val _currentScreen = MutableStateFlow(AppScreen.HOME)
+    private val _currentScreen = MutableStateFlow(AppScreen.SPLASH)
     val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
 
     // Form Input State

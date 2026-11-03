@@ -46,8 +46,8 @@ fun MainAppScreen(viewModel: BbmViewModel) {
         }
     }
 
-    // Intercept back button when not in HOME
-    BackHandler(enabled = currentScreen != AppScreen.HOME) {
+    // Intercept back button
+    BackHandler(enabled = currentScreen != AppScreen.HOME && currentScreen != AppScreen.SPLASH) {
         when (currentScreen) {
             AppScreen.RESULT -> {
                 viewModel.resetTripForm()
@@ -65,6 +65,13 @@ fun MainAppScreen(viewModel: BbmViewModel) {
     Box(modifier = Modifier.fillMaxSize()) {
         // 1. Current Active Screen
         when (currentScreen) {
+            AppScreen.SPLASH -> {
+                SplashScreen(
+                    onGetStartedClick = {
+                        viewModel.navigateTo(AppScreen.HOME)
+                    }
+                )
+            }
             AppScreen.HOME -> {
                 HomeScreen(
                     viewModel = viewModel,

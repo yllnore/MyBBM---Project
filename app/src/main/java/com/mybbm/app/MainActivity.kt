@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
             MyBBMTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFFE8ECEF)
+                    color = Color(0xFFE8EEFF)
                 ) {
                     MainAppScreen(viewModel = viewModel)
                 }
