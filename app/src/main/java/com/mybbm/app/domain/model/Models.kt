@@ -35,7 +35,9 @@ data class HistoryModel(
 data class SpbuInfo(
     val name: String,
     val distanceFormatted: String,
-    val brand: String = "Pertamina"
+    val brand: String = "Pertamina",
+    val lat: Double = 0.0,
+    val lon: Double = 0.0
 )
 
 data class CalculationResult(

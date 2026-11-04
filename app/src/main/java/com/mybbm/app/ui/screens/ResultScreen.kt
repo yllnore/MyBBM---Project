@@ -1,5 +1,7 @@
 package com.mybbm.app.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,6 +32,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.mybbm.app.R
 import com.mybbm.app.domain.model.LatLng
 import com.mybbm.app.domain.model.SpbuInfo
@@ -57,10 +64,15 @@ fun ResultScreen(
 
     var isExpanded by remember { mutableStateOf(false) }
     var sheetHeightFraction by remember { mutableStateOf(0.44f) }
+    var resultMapTarget by remember { mutableStateOf<LatLng?>(null) }
+    var resultMapTrigger by remember { mutableLongStateOf(0L) }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(isExpanded) {
         sheetHeightFraction = if (isExpanded) 0.92f else 0.44f
     }
+
+    val nearbySpbu = result?.nearbySpbu ?: emptyList()
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -81,7 +93,11 @@ fun ResultScreen(
             originLabel = result?.originName ?: "Asal",
             destinationCoordinate = destinationCoord,
             destinationLabel = result?.destinationName ?: "Tujuan",
-            routePoints = result?.routePoints?.ifEmpty { routePoints } ?: routePoints
+            routePoints = result?.routePoints?.ifEmpty { routePoints } ?: routePoints,
+            spbuCoordinates = nearbySpbu.filter { it.lat != 0.0 && it.lon != 0.0 }.map { LatLng(it.lat, it.lon) },
+            cameraTarget = resultMapTarget,
+            cameraZoom = 16.5,
+            cameraTrigger = resultMapTrigger
         )
 
         // Top Right Floating Action Buttons (FABs)
@@ -349,45 +365,127 @@ fun ResultScreen(
                         }
                     }
                 } else {
-                    spbuList.forEach { spbu ->
-                        Row(
+                    var expandedSpbuIndex by remember { mutableStateOf<Int?>(null) }
+                    
+                    spbuList.forEachIndexed { index, spbu ->
+                        val isCardExpanded = expandedSpbuIndex == index
+                        val context = LocalContext.current
+
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(52.dp)
                                 .background(Color(0xFFF3F1FF), shape = RoundedCornerShape(12.dp))
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                                .clickable {
+                                    expandedSpbuIndex = if (isCardExpanded) null else index
+                                }
+                                .padding(horizontal = 16.dp, vertical = 14.dp)
                         ) {
                             Row(
-                                modifier = Modifier.weight(1f).padding(end = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.pertamax),
-                                    contentDescription = spbu.brand,
-                                    modifier = Modifier.size(22.dp)
-                                )
+                                Row(
+                                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.pertamax),
+                                        contentDescription = spbu.brand,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Text(
+                                        text = spbu.name,
+                                        style = TextStyle(
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF090F59)
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                                 Text(
-                                    text = spbu.name,
+                                    text = spbu.distanceFormatted,
                                     style = TextStyle(
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
                                         color = Color(0xFF090F59)
-                                    ),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    )
                                 )
                             }
-                            Text(
-                                text = spbu.distanceFormatted,
-                                style = TextStyle(
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF090F59)
-                                )
-                            )
+
+                            // Bagian Accordion (Expand ke bawah saat diklik)
+                            AnimatedVisibility(
+                                visible = isCardExpanded,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    HorizontalDivider(color = Color(0xFF7542EF).copy(alpha = 0.2f))
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    // Tombol 1: Lihat di Peta
+                                    Button(
+                                        onClick = {
+                                            expandedSpbuIndex = null
+                                            isExpanded = false
+                                            coroutineScope.launch {
+                                                delay(100L) // Jeda agar animasi turunnya bottom sheet mulus tanpa bentrok dengan render peta
+                                                if (spbu.lat != 0.0 && spbu.lon != 0.0) {
+                                                    resultMapTarget = LatLng(spbu.lat, spbu.lon)
+                                                    resultMapTrigger = System.currentTimeMillis()
+                                                    viewModel.updateResultMapCamera(LatLng(spbu.lat, spbu.lon), 16.5)
+                                                }
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7542EF)),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(40.dp)
+                                    ) {
+                                        Text(
+                                            text = "Lihat di Peta",
+                                            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                        )
+                                    }
+
+                                    // Tombol 2: Buka Google Maps
+                                    OutlinedButton(
+                                        onClick = {
+                                            expandedSpbuIndex = null
+                                            if (spbu.lat != 0.0 && spbu.lon != 0.0) {
+                                                val uri = Uri.parse("geo:${spbu.lat},${spbu.lon}?q=${Uri.encode(spbu.name)}")
+                                                val intent = Intent(Intent.ACTION_VIEW, uri)
+                                                intent.setPackage("com.google.android.apps.maps")
+                                                try {
+                                                    context.startActivity(intent)
+                                                } catch (e: Exception) {
+                                                    val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/?api=1&query=${spbu.lat},${spbu.lon}"))
+                                                    context.startActivity(webIntent)
+                                                }
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, Color(0xFF7542EF)),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(40.dp)
+                                    ) {
+                                        Text(
+                                            text = "Buka Google Maps",
+                                            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7542EF))
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

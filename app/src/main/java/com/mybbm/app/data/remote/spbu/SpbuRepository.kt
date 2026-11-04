@@ -60,6 +60,53 @@ class SpbuRepository(
     }
 
     /**
+     * Mengambil daftar SPBU di sepanjang rute perjalanan [routePoints] (dari asal hingga tujuan).
+     */
+    suspend fun getSpbuAlongRoute(routePoints: List<LatLng>): List<SpbuInfo> = withContext(Dispatchers.IO) {
+        if (routePoints.isEmpty()) return@withContext emptyList()
+        if (routePoints.size <= 3) {
+            return@withContext getNearbySpbu(routePoints.first())
+        }
+
+        // Ambil 5 sampel titik di sepanjang rute (awal, 25%, 50%, 75%, akhir)
+        val sampleIndices = listOf(
+            0,
+            routePoints.size / 4,
+            routePoints.size / 2,
+            (routePoints.size * 3) / 4,
+            routePoints.size - 1
+        ).distinct()
+
+        val routeSpbuList = mutableListOf<SpbuInfo>()
+
+        for (index in sampleIndices) {
+            val point = routePoints[index]
+            val spbuList = getNearbySpbu(point)
+            if (spbuList.isNotEmpty()) {
+                // Ambil 1 SPBU terdekat untuk masing-masing titik sampel di sepanjang rute
+                routeSpbuList.add(spbuList.first())
+            }
+        }
+
+        return@withContext mutableListWithDistinctCoordinates(routeSpbuList).take(5)
+    }
+
+    private fun mutableListWithDistinctCoordinates(list: List<SpbuInfo>): List<SpbuInfo> {
+        val distinct = mutableListOf<SpbuInfo>()
+        for (item in list) {
+            if (item.lat == 0.0 && item.lon == 0.0) continue
+            val isDuplicate = distinct.any { existing ->
+                existing.name.equals(item.name, ignoreCase = true) ||
+                (Math.abs(existing.lat - item.lat) < 0.0015 && Math.abs(existing.lon - item.lon) < 0.0015)
+            }
+            if (!isDuplicate) {
+                distinct.add(item)
+            }
+        }
+        return distinct
+    }
+
+    /**
      * Melakukan kueri ke Overpass API untuk mencari elemen 'amenity=fuel' dalam radius 5 km.
      */
     private fun tryOverpass(origin: LatLng): List<SpbuInfo> {
@@ -126,7 +173,7 @@ class SpbuRepository(
 
                     spbuResults.add(
                         Pair(
-                            SpbuInfo(name = name, distanceFormatted = distanceFormatted, brand = brand),
+                            SpbuInfo(name = name, distanceFormatted = distanceFormatted, brand = brand, lat = lat, lon = lon),
                             distanceKm
                         )
                     )
@@ -185,7 +232,7 @@ class SpbuRepository(
 
                     list.add(
                         Pair(
-                            SpbuInfo(name = cleanName, distanceFormatted = formatDistance(distanceKm), brand = brand),
+                            SpbuInfo(name = cleanName, distanceFormatted = formatDistance(distanceKm), brand = brand, lat = lat, lon = lon),
                             distanceKm
                         )
                     )
@@ -217,7 +264,7 @@ class SpbuRepository(
 
         return defaultList.map { (name, coord, brand) ->
             val dist = HaversineUtil.hitungJarakKm(origin, coord, faktorJalan = 1.0).toDouble()
-            Pair(SpbuInfo(name = name, distanceFormatted = formatDistance(dist), brand = brand), dist)
+            Pair(SpbuInfo(name = name, distanceFormatted = formatDistance(dist), brand = brand, lat = coord.lat, lon = coord.lng), dist)
         }.sortedBy { it.second }.take(5).map { it.first }
     }
 

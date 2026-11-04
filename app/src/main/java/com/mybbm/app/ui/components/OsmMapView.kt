@@ -3,6 +3,7 @@ package com.mybbm.app.ui.components
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
@@ -81,6 +82,34 @@ private fun createUserLocationDrawable(context: Context): Drawable {
     return BitmapDrawable(context.resources, bitmap)
 }
 
+private fun createSpbuMarkerDrawable(context: Context): Drawable {
+    val density = context.resources.displayMetrics.density
+    val sizePx = (36 * density).toInt()
+    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    // Lingkaran putih dengan shadow (meniru desain Figma)
+    val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        setShadowLayer(6f, 0f, 3f, Color.argb(80, 0, 0, 0))
+    }
+    val padding = 4 * density
+    canvas.drawCircle(sizePx / 2f, sizePx / 2f, (sizePx / 2f) - padding, bgPaint)
+
+    // Ikon bensin di tengah
+    val drawable = ContextCompat.getDrawable(context, R.drawable.pertalite)
+    if (drawable != null) {
+        val iconSize = (20 * density).toInt()
+        val left = (sizePx - iconSize) / 2
+        val top = (sizePx - iconSize) / 2
+        drawable.setBounds(left, top, left + iconSize, top + iconSize)
+        drawable.draw(canvas)
+    }
+
+    return BitmapDrawable(context.resources, bitmap)
+}
+
 /**
  * Komponen Compose yang membungkus osmdroid [MapView] interaktif.
  * Menggunakan OpenStreetMap resmi (100% gratis tanpa API key),
@@ -104,7 +133,8 @@ fun OsmMapView(
     cameraTarget: LatLng? = null,
     cameraZoom: Double = 16.5,
     cameraTrigger: Long = 0L,
-    routePoints: List<LatLng> = emptyList()
+    routePoints: List<LatLng> = emptyList(),
+    spbuCoordinates: List<LatLng> = emptyList()
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -194,6 +224,7 @@ fun OsmMapView(
     val originIcon = remember(context) { createCustomPinDrawable(context, R.drawable.lokasi_awal, 30, 40) }
     val destIcon = remember(context) { createCustomPinDrawable(context, R.drawable.lokasi_tujuan, 30, 40) }
     val userLocationIcon = remember(context) { createUserLocationDrawable(context) }
+    val spbuMarkerIcon = remember(context) { createSpbuMarkerDrawable(context) }
 
     // Perbarui overlay (marker & polyline ungu #7542EF) ketika data berubah
     AndroidView(
@@ -261,6 +292,17 @@ fun OsmMapView(
                     icon = userLocationIcon
                 }
                 map.overlays.add(userMarker)
+            }
+
+            // 4.1. Tambahkan Marker SPBU Terdekat (Tanpa rute garis, bentuk lingkaran putih ber-icon)
+            for (coord in spbuCoordinates) {
+                val spbuMarker = Marker(map).apply {
+                    position = GeoPoint(coord.lat, coord.lng)
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                    title = "SPBU Terdekat"
+                    icon = spbuMarkerIcon
+                }
+                map.overlays.add(spbuMarker)
             }
 
             // 5. Atur Kamera, Zoom, dan Auto-Fit Rute agar Titik Awal & Tujuan Kelihatan Semua

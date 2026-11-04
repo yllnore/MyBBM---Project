@@ -715,9 +715,9 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
             navigateTo(AppScreen.RESULT)
 
-            // Mengambil daftar SPBU terdekat riil menggunakan Overpass API
+            // Mengambil daftar SPBU terdekat di sepanjang rute menggunakan SpbuRepository
             viewModelScope.launch(Dispatchers.IO) {
-                val realSpbuList = spbuRepository.getNearbySpbu(originCoord)
+                val realSpbuList = spbuRepository.getSpbuAlongRoute(output.polylinePoints)
                 _calculationResult.value = _calculationResult.value?.copy(nearbySpbu = realSpbuList)
             }
         }
@@ -782,7 +782,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
             navigateTo(AppScreen.RESULT)
 
             viewModelScope.launch(Dispatchers.IO) {
-                val realSpbuList = spbuRepository.getNearbySpbu(destCoord)
+                val realSpbuList = spbuRepository.getSpbuAlongRoute(routePts)
                 _calculationResult.value = _calculationResult.value?.copy(nearbySpbu = realSpbuList)
             }
         }
