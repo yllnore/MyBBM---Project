@@ -276,26 +276,7 @@ fun VehicleCardItem(
                         modifier = Modifier.weight(1f, fill = false)
                     )
 
-                    // Badge Resmi (Supabase) vs Kustom
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = if (isOfficial) Color(0xFF7542EF) else Color(0xFF64748B),
-                                shape = RoundedCornerShape(6.dp)
-                            )
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = if (isOfficial) "Resmi" else "Kustom",
-                            style = TextStyle(
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        )
-                    }
-
-                    // Badge Utama
+                    // Badge Utama jika aktif
                     if (isPrimary) {
                         Box(
                             modifier = Modifier
@@ -311,20 +292,48 @@ fun VehicleCardItem(
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
-                                )
+                                ),
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     }
                 }
 
-                Text(
-                    text = consumption,
-                    style = TextStyle(
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF303B65)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = consumption,
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF303B65)
+                        )
                     )
-                )
+
+                    // Badge Resmi (Supabase) vs Kustom (Horizontal pill)
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = if (isOfficial) Color(0xFF7542EF) else Color(0xFF64748B),
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = if (isOfficial) "Resmi" else "Kustom",
+                            style = TextStyle(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            ),
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                }
             }
         }
 

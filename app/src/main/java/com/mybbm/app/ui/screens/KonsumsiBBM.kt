@@ -247,53 +247,55 @@ fun BbmCardItem(
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.weight(1f, fill = false)
             ) {
+                Text(
+                    text = name,
+                    style = TextStyle(
+                        fontSize = 17.sp,
+                        fontFamily = FontFamily.Default,
+                        fontWeight = FontWeight(700),
+                        color = Color(0xFF090F59)
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(3.dp))
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = name,
+                        text = price,
                         style = TextStyle(
-                            fontSize = 17.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Default,
-                            fontWeight = FontWeight(700),
+                            fontWeight = FontWeight(500),
                             color = Color(0xFF090F59)
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        )
                     )
 
-                    // Badge Resmi vs Kustom
+                    // Badge Resmi vs Kustom (Pill horizontal yang kokoh, tidak akan wrap vertikal)
                     Box(
                         modifier = Modifier
                             .background(
                                 color = if (isOfficial) Color(0xFF7542EF) else Color(0xFF64748B),
                                 shape = RoundedCornerShape(6.dp)
                             )
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = if (isOfficial) "Resmi" else "Kustom",
                             style = TextStyle(
-                                fontSize = 9.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
-                            )
+                            ),
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                Text(
-                    text = price,
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        fontFamily = FontFamily.Default,
-                        fontWeight = FontWeight(500),
-                        color = Color(0xFF090F59)
-                    )
-                )
             }
         }
 
