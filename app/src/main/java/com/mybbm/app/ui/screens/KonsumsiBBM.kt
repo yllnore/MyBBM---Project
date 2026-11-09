@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -40,7 +39,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
-import com.mybbm.app.domain.model.FuelModel
 import com.mybbm.app.util.FuelCalculator
 import com.mybbm.app.viewmodel.BbmViewModel
 
@@ -154,31 +152,22 @@ fun BbmSettingsScreen(
                     .verticalScroll(rememberScrollState())
             ) {
                 if (fuels.isEmpty()) {
-                    // Default fallback visual sesuai Figma
-                    BbmCardItem(
-                        name = "PERTALITE",
-                        price = "Rp 10.000",
-                        iconRes = R.drawable.pertalite,
-                        onEditClick = { onEditBbmClick("PERTALITE") }
-                    )
-                    BbmCardItem(
-                        name = "PERTAMAX",
-                        price = "Rp 12.500",
-                        iconRes = R.drawable.pertamax,
-                        onEditClick = { onEditBbmClick("PERTAMAX") }
-                    )
-                    BbmCardItem(
-                        name = "PERTAMAX TURBO",
-                        price = "Rp 13.800",
-                        iconRes = R.drawable.pertamax_turbo,
-                        onEditClick = { onEditBbmClick("PERTAMAX TURBO") }
-                    )
-                    BbmCardItem(
-                        name = "SOLAR",
-                        price = "Rp 6.800",
-                        iconRes = R.drawable.solar,
-                        onEditClick = { onEditBbmClick("SOLAR") }
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Memuat data BBM...",
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                fontFamily = FontFamily.Default,
+                                fontWeight = FontWeight(500),
+                                color = Color(0xFF090F59)
+                            )
+                        )
+                    }
                 } else {
                     fuels.forEach { fuel ->
                         val iconRes = fuel.iconResId ?: R.drawable.pertamax

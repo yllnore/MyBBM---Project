@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -40,7 +39,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
-import com.mybbm.app.domain.model.VehicleModel
 import com.mybbm.app.util.FuelCalculator
 import com.mybbm.app.viewmodel.BbmViewModel
 
@@ -153,49 +151,22 @@ fun VehicleSettingsScreen(
                     .verticalScroll(rememberScrollState())
             ) {
                 if (vehicles.isEmpty()) {
-                    // Default fallback visual sesuai Figma
-                    VehicleCardItem(
-                        name = "AVANZA",
-                        consumption = "12.5 km/L",
-                        iconRes = R.drawable.mobil,
-                        onEditClick = { onEditVehicleClick("AVANZA") }
-                    )
-                    VehicleCardItem(
-                        name = "TOYOTA",
-                        consumption = "14.0 km/L",
-                        iconRes = R.drawable.mobil,
-                        onEditClick = { onEditVehicleClick("TOYOTA") }
-                    )
-                    VehicleCardItem(
-                        name = "HONDA",
-                        consumption = "15.0 km/L",
-                        iconRes = R.drawable.mobil,
-                        onEditClick = { onEditVehicleClick("HONDA") }
-                    )
-                    VehicleCardItem(
-                        name = "HONDA BEAT",
-                        consumption = "55.0 km/L",
-                        iconRes = R.drawable.motor,
-                        onEditClick = { onEditVehicleClick("HONDA BEAT") }
-                    )
-                    VehicleCardItem(
-                        name = "HONDA VARIO",
-                        consumption = "48.0 km/L",
-                        iconRes = R.drawable.motor,
-                        onEditClick = { onEditVehicleClick("HONDA VARIO") }
-                    )
-                    VehicleCardItem(
-                        name = "NMAX",
-                        consumption = "40.0 km/L",
-                        iconRes = R.drawable.motor,
-                        onEditClick = { onEditVehicleClick("NMAX") }
-                    )
-                    VehicleCardItem(
-                        name = "FAZZIO",
-                        consumption = "50.0 km/L",
-                        iconRes = R.drawable.motor,
-                        onEditClick = { onEditVehicleClick("FAZZIO") }
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Memuat data kendaraan...",
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                fontFamily = FontFamily.Default,
+                                fontWeight = FontWeight(500),
+                                color = Color(0xFF090F59)
+                            )
+                        )
+                    }
                 } else {
                     vehicles.forEach { v ->
                         val iconRes = if (v.type.equals("Motor", ignoreCase = true)) R.drawable.motor else R.drawable.mobil

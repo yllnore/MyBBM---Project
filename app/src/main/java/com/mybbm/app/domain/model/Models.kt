@@ -13,7 +13,8 @@ data class FuelModel(
     val name: String,
     val pricePerLiter: java.math.BigDecimal,
     val iconResId: Int? = null,
-    val colorHex: String? = null
+    val colorHex: String? = null,
+    val isDefault: Boolean = false
 )
 
 data class HistoryModel(

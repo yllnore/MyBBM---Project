@@ -4,9 +4,9 @@ import com.mybbm.app.R
 import com.mybbm.app.data.local.entity.BbmKustomEntity
 import com.mybbm.app.data.local.entity.KendaraanKustomEntity
 import com.mybbm.app.data.local.entity.RiwayatEntity
-import com.mybbm.app.data.remote.supabase.DefaultBbmDto
-import com.mybbm.app.data.remote.supabase.DefaultKendaraanDto
-import com.mybbm.app.data.remote.supabase.SupabaseDefaultRepository
+import com.mybbm.app.data.remote.supabase.HargaBbmDto
+import com.mybbm.app.data.remote.supabase.JenisBbmDto
+import com.mybbm.app.data.remote.supabase.KendaraanDto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -22,13 +22,15 @@ class RoomDatabaseTest {
             id = id,
             nama = "HONDA JAZZ",
             tipe = "Mobil",
-            rasioKonsumsi = 15.0
+            rasioKonsumsi = 15.0,
+            isDefault = false
         )
 
         assertEquals(id, kendaraan.id)
         assertEquals("HONDA JAZZ", kendaraan.nama)
         assertEquals("Mobil", kendaraan.tipe)
         assertEquals(15.0, kendaraan.rasioKonsumsi, 0.001)
+        assertEquals(false, kendaraan.isDefault)
     }
 
     @Test
@@ -39,7 +41,8 @@ class RoomDatabaseTest {
             nama = "PERTAMAX RACING",
             harga = 18500.0,
             iconResId = R.drawable.pertamax,
-            warnaHex = "#7542EF"
+            warnaHex = "#7542EF",
+            isDefault = false
         )
 
         assertEquals(id, bbm.id)
@@ -47,6 +50,7 @@ class RoomDatabaseTest {
         assertEquals(18500.0, bbm.harga, 0.001)
         assertEquals(R.drawable.pertamax, bbm.iconResId)
         assertEquals("#7542EF", bbm.warnaHex)
+        assertEquals(false, bbm.isDefault)
     }
 
     @Test
@@ -76,50 +80,54 @@ class RoomDatabaseTest {
     }
 
     @Test
-    fun testSupabaseDefaultDatasetsFallback() {
-        val defaultFuels = SupabaseDefaultRepository.FACTORY_DEFAULT_FUELS
-        assertEquals(4, defaultFuels.size)
-        val fuelNames = defaultFuels.map { it.name }
-        assertTrue(fuelNames.contains("PERTALITE"))
-        assertTrue(fuelNames.contains("PERTAMAX"))
-        assertTrue(fuelNames.contains("PERTAMAX TURBO"))
-        assertTrue(fuelNames.contains("SOLAR"))
-
-        val defaultVehicles = SupabaseDefaultRepository.FACTORY_DEFAULT_VEHICLES
-        assertTrue(defaultVehicles.isNotEmpty())
-        val vehicleNames = defaultVehicles.map { it.name }
-        assertTrue(vehicleNames.contains("AVANZA"))
-        assertTrue(vehicleNames.contains("HONDA BEAT"))
-    }
-
-    @Test
-    fun testDefaultBbmDtoMapping() {
-        val dto = DefaultBbmDto(
-            id = "sup-1",
-            nama = "Pertalite",
-            harga = 10000.0,
-            warnaHex = "#10B981"
-        )
-        val model = dto.toFuelModel()
-        assertEquals("sup-1", model.id)
-        assertEquals("PERTALITE", model.name)
-        assertEquals(10000.0, model.pricePerLiter.toDouble(), 0.001)
-        assertEquals("#10B981", model.colorHex)
-    }
-
-    @Test
-    fun testDefaultKendaraanDtoMapping() {
-        val dto = DefaultKendaraanDto(
+    fun testKendaraanDtoMapping() {
+        val dto = KendaraanDto(
             idKendaraan = "veh-1",
-            namaKendaraan = "Honda Beat",
+            namaKendaraan = "Honda Beat 110 eSP",
             jenisKendaraan = "MOTOR",
-            konsumsiKmPerLiter = 55.0
+            konsumsiKmPerLiter = 55.0,
+            isDefault = true
         )
         val model = dto.toVehicleModel()
         assertEquals("veh-1", model.id)
-        assertEquals("HONDA BEAT", model.name)
+        assertEquals("HONDA BEAT 110 ESP", model.name)
         assertEquals("Motor", model.type)
         assertEquals(55.0, model.fuelEfficiency.toDouble(), 0.001)
         assertTrue(model.isDefault)
+
+        val entity = dto.toEntity()
+        assertEquals("veh-1", entity.id)
+        assertEquals("HONDA BEAT 110 ESP", entity.nama)
+        assertEquals("Motor", entity.tipe)
+        assertEquals(55.0, entity.rasioKonsumsi, 0.001)
+        assertTrue(entity.isDefault)
+    }
+
+    @Test
+    fun testHargaBbmDtoMapping() {
+        val jenisBbm = JenisBbmDto(
+            idBbm = "bbm-1",
+            namaBbm = "Pertalite (RON 90)",
+            jenisBahanBakar = "BENSIN"
+        )
+        val dto = HargaBbmDto(
+            idHarga = "hrg-1",
+            idBbm = "bbm-1",
+            wilayah = "KALIMANTAN_TIMUR",
+            hargaPerLiter = 10000.0,
+            jenisBbm = jenisBbm
+        )
+        val model = dto.toFuelModel()
+        assertEquals("hrg-1", model.id)
+        assertEquals("PERTALITE (RON 90)", model.name)
+        assertEquals(10000.0, model.pricePerLiter.toDouble(), 0.001)
+        assertEquals("#10B981", model.colorHex)
+        assertTrue(model.isDefault)
+
+        val entity = dto.toEntity()
+        assertEquals("hrg-1", entity.id)
+        assertEquals("PERTALITE (RON 90)", entity.nama)
+        assertEquals(10000.0, entity.harga, 0.001)
+        assertTrue(entity.isDefault)
     }
 }

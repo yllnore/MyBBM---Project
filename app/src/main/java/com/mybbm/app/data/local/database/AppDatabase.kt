@@ -13,12 +13,12 @@ import com.mybbm.app.data.local.entity.RiwayatEntity
 
 /**
  * Room Database untuk arsitektur Hybrid (Online + Offline).
- * Database ini HANYA menyimpan data kustom pengguna dan riwayat perjalanan secara offline.
- * Data default (bawaan pabrik) tidak lagi di-prepopulate di sini, melainkan dibaca dari Supabase.
+ * Database ini menyimpan cache data kendaraan & BBM dari Supabase beserta data kustom pengguna
+ * dan riwayat perjalanan secara offline.
  */
 @Database(
     entities = [KendaraanKustomEntity::class, BbmKustomEntity::class, RiwayatEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

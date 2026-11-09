@@ -6,8 +6,8 @@ import androidx.room.PrimaryKey
 import java.util.UUID
 
 /**
- * Entitas tabel lokal `kendaraan_kustom` untuk menyimpan kendaraan kustom buatan pengguna secara offline.
- * Data bawaan pabrik tidak disimpan di sini, melainkan dibaca dari Supabase (Hybrid).
+ * Entitas tabel lokal `kendaraan_kustom` untuk menyimpan kendaraan (cache dari Supabase + buatan pengguna).
+ * Kolom `is_default` bernilai true untuk kendaraan bawaan/Supabase, dan false untuk kustom buatan pengguna.
  */
 @Entity(tableName = "kendaraan_kustom")
 data class KendaraanKustomEntity(
@@ -17,13 +17,15 @@ data class KendaraanKustomEntity(
     val tipe: String, // "Mobil" atau "Motor"
     @ColumnInfo(name = "rasio_konsumsi")
     val rasioKonsumsi: Double, // km/L
+    @ColumnInfo(name = "is_default")
+    val isDefault: Boolean = false,
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis()
 )
 
 /**
- * Entitas tabel lokal `bbm_kustom` untuk menyimpan jenis BBM kustom buatan pengguna secara offline.
- * Data bawaan pabrik tidak disimpan di sini, melainkan dibaca dari Supabase (Hybrid).
+ * Entitas tabel lokal `bbm_kustom` untuk menyimpan jenis BBM (cache dari Supabase + buatan pengguna).
+ * Kolom `is_default` bernilai true untuk BBM bawaan/Supabase, dan false untuk kustom buatan pengguna.
  */
 @Entity(tableName = "bbm_kustom")
 data class BbmKustomEntity(
@@ -35,6 +37,8 @@ data class BbmKustomEntity(
     val iconResId: Int? = null,
     @ColumnInfo(name = "warna_hex")
     val warnaHex: String? = null,
+    @ColumnInfo(name = "is_default")
+    val isDefault: Boolean = false,
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis()
 )

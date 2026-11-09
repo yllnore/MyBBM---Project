@@ -52,7 +52,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
-import com.mybbm.app.data.remote.supabase.SupabaseDefaultRepository
 import com.mybbm.app.domain.model.LatLng
 import com.mybbm.app.domain.model.SearchSuggestionItem
 import com.mybbm.app.ui.components.MapVisualOverlay
@@ -171,7 +170,7 @@ fun HomeScreen(
             }
             ActiveInputMode.VEHICLE -> {
                 val trimmed = vehicleQuery.trim()
-                val baseVehicles = if (vehicles.isNotEmpty()) vehicles else SupabaseDefaultRepository.FACTORY_DEFAULT_VEHICLES
+                val baseVehicles = vehicles
                 val list = if (trimmed.isBlank() || trimmed.equals(selectedVehicle?.name, ignoreCase = true)) {
                     baseVehicles
                 } else {
@@ -184,7 +183,7 @@ fun HomeScreen(
             }
             ActiveInputMode.FUEL -> {
                 val trimmed = fuelQuery.trim()
-                val baseFuels = if (fuels.isNotEmpty()) fuels else SupabaseDefaultRepository.FACTORY_DEFAULT_FUELS
+                val baseFuels = fuels
                 val list = if (trimmed.isBlank() || trimmed.equals(selectedFuel?.name, ignoreCase = true)) {
                     baseFuels
                 } else {
@@ -676,7 +675,7 @@ fun HomeScreen(
                         if (isFocused) {
                             coroutineScope.launch { bottomSheetState.expand() }
                             activeMode = ActiveInputMode.VEHICLE
-                            viewModel.filterVehicles(vehicleTextFieldValue.text)
+                            viewModel.filterVehicles("")
                         }
                     },
                     imeAction = ImeAction.Next,
@@ -708,7 +707,7 @@ fun HomeScreen(
                         if (isFocused) {
                             coroutineScope.launch { bottomSheetState.expand() }
                             activeMode = ActiveInputMode.FUEL
-                            viewModel.filterFuels(fuelTextFieldValue.text)
+                            viewModel.filterFuels("")
                         }
                     },
                     imeAction = ImeAction.Done,
@@ -804,7 +803,7 @@ fun HomeScreen(
                 exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f, fill = false)
+                    .weight(1f, fill = true)
             ) {
                 Column(
                     modifier = Modifier
@@ -822,7 +821,7 @@ fun HomeScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
+                            .verticalScroll(rememberScrollState()).padding(bottom = 36.dp)
                     ) {
                         // Opsi Lokasi Saat Ini (Hanya saat aktif di mode Lokasi Awal)
                         if (activeMode == ActiveInputMode.ORIGIN) {
@@ -920,10 +919,10 @@ fun HomeScreen(
                         }
 
                         // 5 & 6. Menampilkan item saran yang sudah terfilter sesuai kategori field yang aktif
-                        val displaySuggestions = if (activeMode == ActiveInputMode.ORIGIN) {
-                            filteredSuggestions.take(5)
-                        } else {
-                            filteredSuggestions.take(6)
+                        val displaySuggestions = when (activeMode) {
+                            ActiveInputMode.ORIGIN, ActiveInputMode.DESTINATION -> filteredSuggestions.take(10)
+                            ActiveInputMode.VEHICLE, ActiveInputMode.FUEL -> filteredSuggestions
+                            ActiveInputMode.NONE -> emptyList()
                         }
 
                         displaySuggestions.forEach { item ->

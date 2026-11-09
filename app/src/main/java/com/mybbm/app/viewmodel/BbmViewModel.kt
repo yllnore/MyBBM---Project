@@ -25,15 +25,12 @@ import com.mybbm.app.domain.usecase.HitungBiayaUseCase
 import com.mybbm.app.util.DeviceLocationHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -68,13 +65,13 @@ enum class MapPickMode {
 
 class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
-    // 1. Offline Storage (Room Database - Data Milik Pengguna)
+    // 1. Offline Storage (Room Database - Cache Supabase + Data Pengguna)
     private val db = AppDatabase.getInstance(application)
     private val kendaraanKustomDao = db.kendaraanKustomDao()
     private val bbmKustomDao = db.bbmKustomDao()
     private val riwayatDao = db.riwayatDao()
 
-    // 2. Online Read-Only (Supabase Dataset Bawaan Pabrik)
+    // 2. Online Repository (Supabase Realtime Hybrid Cache)
     private val supabaseDefaultRepository = SupabaseDefaultRepository()
 
     // Layanan remote & domain lainnya
@@ -82,10 +79,6 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     private val locationRepository = LocationRepository()
     private val osrmRouteRepository = OsrmRouteRepository()
     private val spbuRepository = SpbuRepository()
-
-    // State Dataset Default dari Supabase (dengan data bawaan pabrik instan)
-    private val _defaultKendaraan = MutableStateFlow<List<VehicleModel>>(SupabaseDefaultRepository.FACTORY_DEFAULT_VEHICLES)
-    private val _defaultBbm = MutableStateFlow<List<FuelModel>>(SupabaseDefaultRepository.FACTORY_DEFAULT_FUELS)
 
     // Location Autocomplete Search State
     private val _locationQueryFlow = MutableStateFlow("")
@@ -226,8 +219,8 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Flow Data Kustom Pengguna dari Room (Offline)
-    private val customVehiclesFlow: Flow<List<VehicleModel>> = kendaraanKustomDao.getAllKendaraanKustom()
+    // 3. Flow Data Kendaraan dari Room Database (Cache Supabase + Kustom Pengguna)
+    val vehicles: StateFlow<List<VehicleModel>> = kendaraanKustomDao.getAllKendaraan()
         .map { list ->
             list.map {
                 VehicleModel(
@@ -235,39 +228,43 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
                     name = it.nama,
                     type = it.tipe,
                     fuelEfficiency = BigDecimal.valueOf(it.rasioKonsumsi),
-                    isDefault = false
+                    isDefault = it.isDefault
                 )
             }
         }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    private val customFuelsFlow: Flow<List<FuelModel>> = bbmKustomDao.getAllBbmKustom()
+    // 4. Flow Data Jenis BBM dari Room Database (Cache Supabase + Kustom Pengguna)
+    val fuels: StateFlow<List<FuelModel>> = bbmKustomDao.getAllBbm()
         .map { list ->
             list.map {
-                val iconRes = it.iconResId ?: when (it.nama.uppercase()) {
-                    "PERTAMAX" -> R.drawable.pertamax
-                    "PERTAMAX TURBO" -> R.drawable.pertamax_turbo
-                    "SOLAR" -> R.drawable.solar
-                    "PERTALITE" -> R.drawable.pertalite
+                val iconRes = it.iconResId ?: when {
+                    it.nama.contains("PERTALITE", ignoreCase = true) -> R.drawable.pertalite
+                    it.nama.contains("TURBO", ignoreCase = true) -> R.drawable.pertamax_turbo
+                    it.nama.contains("PERTAMAX", ignoreCase = true) -> R.drawable.pertamax
+                    it.nama.contains("SOLAR", ignoreCase = true) || it.nama.contains("DEX", ignoreCase = true) -> R.drawable.solar
                     else -> R.drawable.pertamax
+                }
+                val colorHex = it.warnaHex ?: when {
+                    it.nama.contains("PERTALITE", ignoreCase = true) -> "#10B981"
+                    it.nama.contains("TURBO", ignoreCase = true) -> "#EF4444"
+                    it.nama.contains("PERTAMAX", ignoreCase = true) -> "#7542EF"
+                    it.nama.contains("BIOSOLAR", ignoreCase = true) || it.nama.contains("SOLAR", ignoreCase = true) -> "#4B5563"
+                    it.nama.contains("DEXLITE", ignoreCase = true) -> "#059669"
+                    it.nama.contains("PERTAMINA DEX", ignoreCase = true) -> "#2563EB"
+                    else -> "#7542EF"
                 }
                 FuelModel(
                     id = it.id,
                     name = it.nama,
                     pricePerLiter = BigDecimal.valueOf(it.harga),
                     iconResId = iconRes,
-                    colorHex = it.warnaHex
+                    colorHex = colorHex,
+                    isDefault = it.isDefault
                 )
             }
         }
-
-    // 3. PENGGABUNGAN DATA (Hybrid Online + Offline) menggunakan `combine` Flow
-    val vehicles: StateFlow<List<VehicleModel>> = combine(_defaultKendaraan, customVehiclesFlow) { defaults, customs ->
-        defaults + customs
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, SupabaseDefaultRepository.FACTORY_DEFAULT_VEHICLES)
-
-    val fuels: StateFlow<List<FuelModel>> = combine(_defaultBbm, customFuelsFlow) { defaults, customs ->
-        defaults + customs
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, SupabaseDefaultRepository.FACTORY_DEFAULT_FUELS)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // Riwayat Perjalanan (100% Offline Room)
     val histories: StateFlow<List<HistoryModel>> = riwayatDao.getAllRiwayat()
@@ -349,16 +346,19 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Memuat dataset bawaan pabrik dari Supabase (Online Read-Only)
-     * saat ViewModel pertama kali dibuat.
+     * Mengambil data riil dari Supabase (tabel `kendaraan` dan `harga_bbm`)
+     * dan menyimpannya ke cache lokal Room Database.
+     * Karena `vehicles` dan `fuels` mengobservasi Flow dari Room,
+     * tampilan UI akan otomatis terupdate secara realtime begitu data tersimpan.
      */
     fun loadDefaultDatasetsFromSupabase() {
         viewModelScope.launch(Dispatchers.IO) {
-            val fuelsData = supabaseDefaultRepository.getDefaultBbm()
-            _defaultBbm.value = fuelsData
-
-            val vehiclesData = supabaseDefaultRepository.getDefaultKendaraan()
-            _defaultKendaraan.value = vehiclesData
+            try {
+                supabaseDefaultRepository.syncKendaraan(kendaraanKustomDao)
+                supabaseDefaultRepository.syncBbm(bbmKustomDao)
+            } catch (e: Exception) {
+                android.util.Log.e("BbmViewModel", "Gagal sinkronisasi data dari Supabase: ${e.message}", e)
+            }
         }
     }
 
@@ -546,13 +546,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     fun filterVehicles(query: String) {
         _locationQueryFlow.value = ""
         _isSearchingLocation.value = false
-        val allVehicles = if (vehicles.value.isNotEmpty()) {
-            vehicles.value
-        } else if (_defaultKendaraan.value.isNotEmpty()) {
-            _defaultKendaraan.value
-        } else {
-            SupabaseDefaultRepository.FACTORY_DEFAULT_VEHICLES
-        }
+        val allVehicles = vehicles.value
         val trimmed = query.trim()
         val filtered = if (trimmed.isBlank() || trimmed.equals(_selectedVehicle.value?.name, ignoreCase = true)) {
             allVehicles
@@ -571,13 +565,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     fun filterFuels(query: String) {
         _locationQueryFlow.value = ""
         _isSearchingLocation.value = false
-        val allFuels = if (fuels.value.isNotEmpty()) {
-            fuels.value
-        } else if (_defaultBbm.value.isNotEmpty()) {
-            _defaultBbm.value
-        } else {
-            SupabaseDefaultRepository.FACTORY_DEFAULT_FUELS
-        }
+        val allFuels = fuels.value
         val trimmed = query.trim()
         val filtered = if (trimmed.isBlank() || trimmed.equals(_selectedFuel.value?.name, ignoreCase = true)) {
             allFuels
@@ -629,15 +617,13 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setVehicleQuery(name: String) {
         val trimmed = name.trim()
-        val allVehicles = if (vehicles.value.isNotEmpty()) vehicles.value else _defaultKendaraan.value
-        val match = allVehicles.firstOrNull { it.name.equals(trimmed, ignoreCase = true) }
+        val match = vehicles.value.firstOrNull { it.name.equals(trimmed, ignoreCase = true) }
         _selectedVehicle.value = match
     }
 
     fun setFuelQuery(name: String) {
         val trimmed = name.trim()
-        val allFuels = if (fuels.value.isNotEmpty()) fuels.value else _defaultBbm.value
-        val match = allFuels.firstOrNull { it.name.equals(trimmed, ignoreCase = true) }
+        val match = fuels.value.firstOrNull { it.name.equals(trimmed, ignoreCase = true) }
         _selectedFuel.value = match
     }
 
@@ -664,8 +650,8 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
      * Hasil kalkulasi disimpan ke Room Database (Offline RiwayatEntity).
      */
     fun calculateTripCost() {
-        val vehicle = _selectedVehicle.value ?: VehicleModel("1", "HONDA", "Mobil", BigDecimal("15.0"))
-        val fuel = _selectedFuel.value ?: FuelModel("1", "PERTAMAX", BigDecimal("12500"))
+        val vehicle = _selectedVehicle.value ?: vehicles.value.firstOrNull() ?: VehicleModel("1", "KENDARAAN", "Mobil", BigDecimal("15.0"))
+        val fuel = _selectedFuel.value ?: fuels.value.firstOrNull() ?: FuelModel("1", "BBM", BigDecimal("10000"))
 
         val originCoord = _originCoord.value ?: resolveCoordinate(_origin.value, isOrigin = true)
         val destCoord = _destinationCoord.value ?: resolveCoordinate(_destination.value, isOrigin = false)
@@ -743,11 +729,9 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
         // Cari kendaraan dan jenis BBM yang sesuai dengan riwayat
         val matchingVehicle = vehicles.value.find { it.name.equals(item.vehicleName, true) }
-            ?: _defaultKendaraan.value.find { it.name.equals(item.vehicleName, true) }
             ?: VehicleModel("hist", item.vehicleName, "Mobil", BigDecimal("15.0"))
 
         val matchingFuel = fuels.value.find { it.name.equals(item.fuelName, true) }
-            ?: _defaultBbm.value.find { it.name.equals(item.fuelName, true) }
             ?: FuelModel("hist", item.fuelName, if (item.totalLiters > BigDecimal.ZERO) item.totalCost.divide(item.totalLiters, 0, RoundingMode.HALF_UP) else BigDecimal("10000"))
 
         _selectedVehicle.value = matchingVehicle
@@ -788,14 +772,15 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // CRUD Vehicle (Offline via Room untuk kendaraan pengguna kustom)
+    // CRUD Vehicle (Room Database)
     fun addVehicle(name: String, type: String, efficiency: BigDecimal) {
         viewModelScope.launch(Dispatchers.IO) {
             val entity = KendaraanKustomEntity(
                 id = UUID.randomUUID().toString(),
                 nama = name.uppercase().trim(),
                 tipe = type,
-                rasioKonsumsi = efficiency.toDouble()
+                rasioKonsumsi = efficiency.toDouble(),
+                isDefault = false
             )
             kendaraanKustomDao.insertKendaraan(entity)
             _toastMessage.value = "Berhasil ditambahkan!"
@@ -805,22 +790,15 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateVehicle(id: String, name: String, type: String, efficiency: BigDecimal) {
         viewModelScope.launch(Dispatchers.IO) {
-            val isDefaultItem = _defaultKendaraan.value.any { it.id == id }
-            if (isDefaultItem) {
-                _defaultKendaraan.value = _defaultKendaraan.value.map {
-                    if (it.id == id) {
-                        it.copy(name = name.uppercase().trim(), type = type, fuelEfficiency = efficiency)
-                    } else it
-                }
-            } else {
-                val entity = KendaraanKustomEntity(
-                    id = id,
-                    nama = name.uppercase().trim(),
-                    tipe = type,
-                    rasioKonsumsi = efficiency.toDouble()
-                )
-                kendaraanKustomDao.updateKendaraan(entity)
-            }
+            val existing = vehicles.value.find { it.id == id }
+            val entity = KendaraanKustomEntity(
+                id = id,
+                nama = name.uppercase().trim(),
+                tipe = type,
+                rasioKonsumsi = efficiency.toDouble(),
+                isDefault = existing?.isDefault ?: false
+            )
+            kendaraanKustomDao.insertKendaraan(entity)
             _toastMessage.value = "Berhasil disimpan!"
             showEditVehicleDialog.value = false
         }
@@ -828,21 +806,21 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteVehicle(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            _defaultKendaraan.value = _defaultKendaraan.value.filter { it.id != id }
             kendaraanKustomDao.deleteKendaraanById(id)
             _toastMessage.value = "Berhasil dihapus!"
             showDeleteVehicleDialog.value = false
         }
     }
 
-    // CRUD Fuel (Offline via Room untuk BBM pengguna kustom)
+    // CRUD Fuel (Room Database)
     fun addFuel(name: String, price: BigDecimal) {
         viewModelScope.launch(Dispatchers.IO) {
             val entity = BbmKustomEntity(
                 id = UUID.randomUUID().toString(),
                 nama = name.uppercase().trim(),
                 harga = price.toDouble(),
-                iconResId = R.drawable.pertamax
+                iconResId = R.drawable.pertamax,
+                isDefault = false
             )
             bbmKustomDao.insertBbm(entity)
             _toastMessage.value = "Berhasil ditambahkan!"
@@ -852,22 +830,16 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateFuel(id: String, name: String, price: BigDecimal) {
         viewModelScope.launch(Dispatchers.IO) {
-            val isDefaultItem = _defaultBbm.value.any { it.id == id }
-            if (isDefaultItem) {
-                _defaultBbm.value = _defaultBbm.value.map {
-                    if (it.id == id) {
-                        it.copy(name = name.uppercase().trim(), pricePerLiter = price)
-                    } else it
-                }
-            } else {
-                val entity = BbmKustomEntity(
-                    id = id,
-                    nama = name.uppercase().trim(),
-                    harga = price.toDouble(),
-                    iconResId = R.drawable.pertamax
-                )
-                bbmKustomDao.updateBbm(entity)
-            }
+            val existing = fuels.value.find { it.id == id }
+            val entity = BbmKustomEntity(
+                id = id,
+                nama = name.uppercase().trim(),
+                harga = price.toDouble(),
+                iconResId = existing?.iconResId ?: R.drawable.pertamax,
+                warnaHex = existing?.colorHex,
+                isDefault = existing?.isDefault ?: false
+            )
+            bbmKustomDao.insertBbm(entity)
             _toastMessage.value = "Berhasil disimpan!"
             showEditFuelDialog.value = false
         }
@@ -875,7 +847,6 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteFuel(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            _defaultBbm.value = _defaultBbm.value.filter { it.id != id }
             bbmKustomDao.deleteBbmById(id)
             _toastMessage.value = "Berhasil dihapus!"
             showDeleteFuelDialog.value = false

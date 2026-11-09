@@ -206,83 +206,187 @@ fun ResultScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Main Result Card (Lilac container with 2 columns)
+            // Main Result Card (Rute Tujuan Awal sampai Akhir, Total Biaya, Estimasi BBM, dan Jarak Tempuh)
             val totalCostText = result?.let { FuelCalculator.formatRupiah(it.totalCost) } ?: "Rp. 85.000"
             val totalLiterText = result?.let { FuelCalculator.formatLiters(it.totalLiters) } ?: "6.8 Liter"
+            val distanceText = result?.let { FuelCalculator.formatDistance(it.distanceKm) } ?: "12,5 km"
+            val originNameText = result?.originName?.ifBlank { "Lokasi Awal" } ?: "Lokasi Awal"
+            val destNameText = result?.destinationName?.ifBlank { "Lokasi Tujuan" } ?: "Lokasi Tujuan"
 
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(90.dp),
+                    .wrapContentHeight(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFA59EF2))
             ) {
-                Row(
+                Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
-                    // Left Column: Total Biaya BBM
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 8.dp),
-                        verticalArrangement = Arrangement.Center
+                    // Header Rute: Tujuan Awal ➔ Tujuan Akhir
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.lokasi_awal),
+                            contentDescription = "Asal",
+                            modifier = Modifier.size(15.dp)
+                        )
                         Text(
-                            text = "TOTAL BIAYA BBM -",
+                            text = originNameText,
+                            style = TextStyle(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF090F59)
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Text(
+                            text = "➔",
                             style = TextStyle(
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF090F59),
-                                letterSpacing = 0.5.sp
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF7542EF)
                             )
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Image(
+                            painter = painterResource(id = R.drawable.lokasi_tujuan),
+                            contentDescription = "Tujuan",
+                            modifier = Modifier.size(15.dp)
+                        )
                         Text(
-                            text = totalCostText,
+                            text = destNameText,
                             style = TextStyle(
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
                                 color = Color(0xFF090F59)
-                            )
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                     }
 
-                    // Vertical Divider
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .fillMaxHeight(0.7f)
-                            .background(Color(0x50090F59))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    HorizontalDivider(
+                        color = Color(0x30090F59),
+                        thickness = 1.dp
                     )
 
-                    // Right Column: Estimasi BBM
-                    Column(
-                        modifier = Modifier
-                            .weight(0.9f)
-                            .padding(start = 12.dp),
-                        verticalArrangement = Arrangement.Center
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // 3 Kolom Metrik: Total Biaya BBM | Estimasi BBM | Jarak Tempuh
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "ESTIMASI BBM -",
-                            style = TextStyle(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF090F59),
-                                letterSpacing = 0.5.sp
+                        // Kolom 1: Total Biaya BBM
+                        Column(
+                            modifier = Modifier.weight(1.05f),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "TOTAL BIAYA BBM -",
+                                style = TextStyle(
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF090F59),
+                                    letterSpacing = 0.4.sp
+                                )
                             )
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = totalLiterText,
-                            style = TextStyle(
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color(0xFF090F59)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = totalCostText,
+                                style = TextStyle(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF090F59)
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
+                        }
+
+                        // Divider Vertikal 1
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(32.dp)
+                                .background(Color(0x50090F59))
                         )
+
+                        // Kolom 2: Estimasi BBM
+                        Column(
+                            modifier = Modifier
+                                .weight(0.95f)
+                                .padding(start = 8.dp),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "ESTIMASI BBM -",
+                                style = TextStyle(
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF090F59),
+                                    letterSpacing = 0.4.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = totalLiterText,
+                                style = TextStyle(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF090F59)
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        // Divider Vertikal 2
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(32.dp)
+                                .background(Color(0x50090F59))
+                        )
+
+                        // Kolom 3: Jarak Tempuh
+                        Column(
+                            modifier = Modifier
+                                .weight(0.9f)
+                                .padding(start = 8.dp),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "JARAK TEMPUH -",
+                                style = TextStyle(
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF090F59),
+                                    letterSpacing = 0.4.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = distanceText,
+                                style = TextStyle(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF090F59)
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }

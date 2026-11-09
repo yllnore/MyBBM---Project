@@ -1,5 +1,7 @@
 package com.mybbm.app.domain.model
 
+import com.mybbm.app.util.FuelCalculator
+
 /**
  * Model representasi item saran autocomplete polimorfik
  * yang menampung saran lokasi (Nominatim), kendaraan (Room/Supabase), atau jenis BBM.
@@ -22,7 +24,7 @@ sealed class SearchSuggestionItem {
     ) : SearchSuggestionItem() {
         override val id: String get() = "veh_${vehicle.id}"
         override val title: String get() = vehicle.name
-        override val subtitle: String get() = "${vehicle.type} · ${vehicle.fuelEfficiency} km/L"
+        override val subtitle: String get() = "${vehicle.type} · ${FuelCalculator.formatEfficiency(vehicle.fuelEfficiency)} km/L"
     }
 
     data class Fuel(
@@ -30,6 +32,6 @@ sealed class SearchSuggestionItem {
     ) : SearchSuggestionItem() {
         override val id: String get() = "fuel_${fuel.id}"
         override val title: String get() = fuel.name
-        override val subtitle: String get() = "Rp ${fuel.pricePerLiter} / Liter"
+        override val subtitle: String get() = "${FuelCalculator.formatRupiah(fuel.pricePerLiter)} / Liter"
     }
 }

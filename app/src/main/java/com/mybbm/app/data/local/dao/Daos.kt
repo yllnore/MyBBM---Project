@@ -7,14 +7,20 @@ import com.mybbm.app.data.local.entity.RiwayatEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Data Access Object (DAO) untuk tabel `kendaraan_kustom` (data buatan user).
+ * Data Access Object (DAO) untuk tabel `kendaraan_kustom` (cache Supabase + data buatan user).
  */
 @Dao
 interface KendaraanKustomDao {
-    @Query("SELECT * FROM kendaraan_kustom ORDER BY created_at DESC")
+    @Query("SELECT * FROM kendaraan_kustom ORDER BY is_default DESC, created_at DESC")
+    fun getAllKendaraan(): Flow<List<KendaraanKustomEntity>>
+
+    @Query("SELECT * FROM kendaraan_kustom ORDER BY is_default DESC, created_at DESC")
+    suspend fun getAllKendaraanList(): List<KendaraanKustomEntity>
+
+    @Query("SELECT * FROM kendaraan_kustom WHERE is_default = 0 ORDER BY created_at DESC")
     fun getAllKendaraanKustom(): Flow<List<KendaraanKustomEntity>>
 
-    @Query("SELECT * FROM kendaraan_kustom ORDER BY created_at DESC")
+    @Query("SELECT * FROM kendaraan_kustom WHERE is_default = 0 ORDER BY created_at DESC")
     suspend fun getAllKendaraanKustomList(): List<KendaraanKustomEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -32,19 +38,34 @@ interface KendaraanKustomDao {
     @Query("DELETE FROM kendaraan_kustom WHERE id = :id")
     suspend fun deleteKendaraanById(id: String)
 
+    @Query("DELETE FROM kendaraan_kustom WHERE is_default = 1")
+    suspend fun deleteDefaultKendaraan()
+
+    @Transaction
+    suspend fun syncDefaultKendaraan(kendaraanList: List<KendaraanKustomEntity>) {
+        deleteDefaultKendaraan()
+        insertAll(kendaraanList)
+    }
+
     @Query("DELETE FROM kendaraan_kustom")
     suspend fun deleteAllKendaraan()
 }
 
 /**
- * Data Access Object (DAO) untuk tabel `bbm_kustom` (data buatan user).
+ * Data Access Object (DAO) untuk tabel `bbm_kustom` (cache Supabase + data buatan user).
  */
 @Dao
 interface BbmKustomDao {
-    @Query("SELECT * FROM bbm_kustom ORDER BY created_at DESC")
+    @Query("SELECT * FROM bbm_kustom ORDER BY is_default DESC, created_at DESC")
+    fun getAllBbm(): Flow<List<BbmKustomEntity>>
+
+    @Query("SELECT * FROM bbm_kustom ORDER BY is_default DESC, created_at DESC")
+    suspend fun getAllBbmList(): List<BbmKustomEntity>
+
+    @Query("SELECT * FROM bbm_kustom WHERE is_default = 0 ORDER BY created_at DESC")
     fun getAllBbmKustom(): Flow<List<BbmKustomEntity>>
 
-    @Query("SELECT * FROM bbm_kustom ORDER BY created_at DESC")
+    @Query("SELECT * FROM bbm_kustom WHERE is_default = 0 ORDER BY created_at DESC")
     suspend fun getAllBbmKustomList(): List<BbmKustomEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -61,6 +82,15 @@ interface BbmKustomDao {
 
     @Query("DELETE FROM bbm_kustom WHERE id = :id")
     suspend fun deleteBbmById(id: String)
+
+    @Query("DELETE FROM bbm_kustom WHERE is_default = 1")
+    suspend fun deleteDefaultBbm()
+
+    @Transaction
+    suspend fun syncDefaultBbm(bbmList: List<BbmKustomEntity>) {
+        deleteDefaultBbm()
+        insertAll(bbmList)
+    }
 
     @Query("DELETE FROM bbm_kustom")
     suspend fun deleteAllBbm()
