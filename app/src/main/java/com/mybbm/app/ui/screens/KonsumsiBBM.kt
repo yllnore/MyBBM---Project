@@ -242,7 +242,7 @@ fun BbmCardItem(
                 )
             }
 
-            // Nama, Badge & Harga BBM
+            // Nama & Harga BBM
             Column(
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.weight(1f, fill = false)
@@ -261,41 +261,15 @@ fun BbmCardItem(
 
                 Spacer(modifier = Modifier.height(3.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = price,
-                        style = TextStyle(
-                            fontSize = 14.sp,
-                            fontFamily = FontFamily.Default,
-                            fontWeight = FontWeight(500),
-                            color = Color(0xFF090F59)
-                        )
+                Text(
+                    text = price,
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontFamily = FontFamily.Default,
+                        fontWeight = FontWeight(500),
+                        color = Color(0xFF090F59)
                     )
-
-                    // Badge Resmi vs Kustom (Pill horizontal yang kokoh, tidak akan wrap vertikal)
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = if (isOfficial) Color(0xFF7542EF) else Color(0xFF64748B),
-                                shape = RoundedCornerShape(6.dp)
-                            )
-                            .padding(horizontal = 7.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = if (isOfficial) "Resmi" else "Kustom",
-                            style = TextStyle(
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            ),
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
-                }
+                )
             }
         }
 
