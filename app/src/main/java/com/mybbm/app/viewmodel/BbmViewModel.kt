@@ -108,6 +108,9 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     val destination: StateFlow<String> = _destination.asStateFlow()
     val lokasiTujuan: StateFlow<String> get() = destination
 
+    private val prefs = getApplication<Application>().getSharedPreferences("mybbm_prefs", Context.MODE_PRIVATE)
+    private val _preferredVehicleId = MutableStateFlow<String?>(prefs.getString("pref_vehicle_id", null))
+    val preferredVehicleId: StateFlow<String?> = _preferredVehicleId.asStateFlow()
     private val _selectedVehicle = MutableStateFlow<VehicleModel?>(null)
     val selectedVehicle: StateFlow<VehicleModel?> = _selectedVehicle.asStateFlow()
 
@@ -312,6 +315,36 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     init {
         loadDefaultDatasetsFromSupabase()
         setupLocationSearchFlow()
+        setupDefaultSelections()
+    }
+
+    private fun setupDefaultSelections() {
+        viewModelScope.launch {
+            vehicles.collect { list ->
+                if (_selectedVehicle.value == null && list.isNotEmpty()) {
+                    val prefId = _preferredVehicleId.value
+                    val match = list.firstOrNull { it.id == prefId } ?: list.first()
+                    _selectedVehicle.value = match
+                }
+            }
+        }
+        viewModelScope.launch {
+            fuels.collect { list ->
+                if (_selectedFuel.value == null && list.isNotEmpty()) {
+                    _selectedFuel.value = list.first()
+                }
+            }
+        }
+    }
+
+    fun setPreferredVehicle(vehicleId: String) {
+        prefs.edit().putString("pref_vehicle_id", vehicleId).apply()
+        _preferredVehicleId.value = vehicleId
+        val match = vehicles.value.firstOrNull { it.id == vehicleId }
+        if (match != null) {
+            _selectedVehicle.value = match
+            showToast("${match.name} dijadikan sebagai kendaraan utama")
+        }
     }
 
     @OptIn(FlowPreview::class)
@@ -485,6 +518,24 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     fun selectDestination(name: String, coord: LatLng) {
         _destination.value = name
         _destinationCoord.value = coord
+        clearSearchResults()
+        checkAndCalculateOsrmRoute()
+    }
+
+    /**
+     * Menukar nilai dan koordinat antara lokasi asal dan lokasi tujuan,
+     * lalu otomatis menghitung ulang rute OSRM secara instan.
+     */
+    fun swapOriginAndDestination() {
+        val tempName = _origin.value
+        val tempCoord = _originCoord.value
+
+        _origin.value = _destination.value
+        _originCoord.value = _destinationCoord.value
+
+        _destination.value = tempName
+        _destinationCoord.value = tempCoord
+
         clearSearchResults()
         checkAndCalculateOsrmRoute()
     }

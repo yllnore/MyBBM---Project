@@ -1,5 +1,7 @@
 package com.mybbm.app.ui.screens
 
+import java.math.BigDecimal
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Image
@@ -9,6 +11,8 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,6 +62,9 @@ fun ResultScreen(
     val routePoints by viewModel.routePoints.collectAsState()
     val resultMapCenter by viewModel.resultMapCenter.collectAsState()
     val resultMapZoom by viewModel.resultMapZoom.collectAsState()
+    val fuels by viewModel.fuels.collectAsState()
+    val selectedFuel by viewModel.selectedFuel.collectAsState()
+    var isRoundTrip by remember { mutableStateOf(false) }
 
     val configuration = LocalConfiguration.current
     val screenHeightPx = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
@@ -207,9 +214,14 @@ fun ResultScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             // Main Result Card (Rute Tujuan Awal sampai Akhir, Total Biaya, Estimasi BBM, dan Jarak Tempuh)
-            val totalCostText = result?.let { FuelCalculator.formatRupiah(it.totalCost) } ?: "Rp. 85.000"
-            val totalLiterText = result?.let { FuelCalculator.formatLiters(it.totalLiters) } ?: "6.8 Liter"
-            val distanceText = result?.let { FuelCalculator.formatDistance(it.distanceKm) } ?: "12,5 km"
+            val multiplier = if (isRoundTrip) BigDecimal(2) else BigDecimal.ONE
+            val currentCost = (result?.totalCost ?: BigDecimal("85000")).multiply(multiplier)
+            val currentLiters = (result?.totalLiters ?: BigDecimal("6.8")).multiply(multiplier)
+            val currentDistance = (result?.distanceKm ?: BigDecimal("12.5")).multiply(multiplier)
+
+            val totalCostText = FuelCalculator.formatRupiah(currentCost)
+            val totalLiterText = FuelCalculator.formatLiters(currentLiters)
+            val distanceText = FuelCalculator.formatDistance(currentDistance)
             val originNameText = result?.originName?.ifBlank { "Lokasi Awal" } ?: "Lokasi Awal"
             val destNameText = result?.destinationName?.ifBlank { "Lokasi Tujuan" } ?: "Lokasi Tujuan"
 
@@ -225,52 +237,83 @@ fun ResultScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
-                    // Header Rute: Tujuan Awal ➔ Tujuan Akhir
+                    // Header Rute & Mode Pulang-Pergi (PP)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.lokasi_awal),
-                            contentDescription = "Asal",
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Text(
-                            text = originNameText,
-                            style = TextStyle(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF090F59)
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        Text(
-                            text = "➔",
-                            style = TextStyle(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF7542EF)
+                        // Nama Rute
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.lokasi_awal),
+                                contentDescription = "Asal",
+                                modifier = Modifier.size(15.dp)
                             )
-                        )
-                        Image(
-                            painter = painterResource(id = R.drawable.lokasi_tujuan),
-                            contentDescription = "Tujuan",
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Text(
-                            text = destNameText,
-                            style = TextStyle(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF090F59)
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
+                            Text(
+                                text = originNameText,
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF090F59)
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            Text(
+                                text = if (isRoundTrip) "⇄" else "➔",
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF7542EF)
+                                )
+                            )
+                            Image(
+                                painter = painterResource(id = R.drawable.lokasi_tujuan),
+                                contentDescription = "Tujuan",
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Text(
+                                text = destNameText,
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF090F59)
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                        }
+
+                        // Toggle Mode Pulang-Pergi (PP)
+                        Surface(
+                            onClick = { isRoundTrip = !isRoundTrip },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isRoundTrip) Color(0xFF7542EF) else Color(0x22090F59),
+                            border = BorderStroke(1.dp, if (isRoundTrip) Color(0xFF7542EF) else Color(0x40090F59)),
+                            modifier = Modifier.padding(start = 6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = if (isRoundTrip) "✓ PP (2x)" else "Mode PP",
+                                    style = TextStyle(
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isRoundTrip) Color.White else Color(0xFF090F59)
+                                    )
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -414,15 +457,129 @@ fun ResultScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Scrollable Content (SPBU Terdekat muncul saat di-drag ke atas)
+            // Scrollable Content (Komparasi BBM & SPBU Terdekat)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // SPBU Terdekat Section Title
+                // 1. Komparasi Cepat Biaya BBM Lain
+                val baseLiters = result?.totalLiters ?: BigDecimal.ZERO
+                if (fuels.isNotEmpty() && baseLiters > BigDecimal.ZERO) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Komparasi Jenis BBM Lain:",
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF090F59)
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(horizontal = 2.dp)
+                        ) {
+                            items(fuels) { fuel ->
+                                val fuelLiters = baseLiters.multiply(multiplier)
+                                val fuelTripCost = fuel.pricePerLiter.multiply(fuelLiters)
+                                val isSelected = fuel.name.equals(selectedFuel?.name, ignoreCase = true)
+                                val costDiff = fuelTripCost.subtract(currentCost)
+
+                                Surface(
+                                    onClick = {
+                                        viewModel.selectFuel(fuel)
+                                        viewModel.calculateTripCost()
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isSelected) Color(0xFF7542EF) else Color(0xFFD6D1FC),
+                                    border = BorderStroke(
+                                        width = 1.2.dp,
+                                        color = if (isSelected) Color(0xFF5B21B6) else Color(0x33090F59)
+                                    ),
+                                    shadowElevation = if (isSelected) 3.dp else 1.dp,
+                                    modifier = Modifier.width(138.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = fuel.name,
+                                                style = TextStyle(
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isSelected) Color.White else Color(0xFF090F59)
+                                                ),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.weight(1f, fill = false)
+                                            )
+                                            if (isSelected) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(Color(0x33FFFFFF), RoundedCornerShape(4.dp))
+                                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "Aktif",
+                                                        style = TextStyle(
+                                                            fontSize = 9.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color.White
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Text(
+                                            text = FuelCalculator.formatRupiah(fuelTripCost),
+                                            style = TextStyle(
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = if (isSelected) Color.White else Color(0xFF090F59)
+                                            )
+                                        )
+
+                                        if (!isSelected) {
+                                            val isMoreExpensive = costDiff > BigDecimal.ZERO
+                                            val diffAbs = costDiff.abs()
+                                            val diffText = if (isMoreExpensive) "+${FuelCalculator.formatRupiah(diffAbs)}" else "-${FuelCalculator.formatRupiah(diffAbs)}"
+                                            val diffColor = if (isMoreExpensive) Color(0xFF6B21A8) else Color(0xFF15803D)
+                                            Text(
+                                                text = diffText,
+                                                style = TextStyle(
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = diffColor
+                                                )
+                                            )
+                                        } else {
+                                            Text(
+                                                text = "Tarif: ${FuelCalculator.formatRupiah(fuel.pricePerLiter)}/L",
+                                                style = TextStyle(
+                                                    fontSize = 9.sp,
+                                                    color = Color(0xDDFFFFFF)
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 2. SPBU Terdekat Section Title
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Start

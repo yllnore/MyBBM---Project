@@ -19,6 +19,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -51,6 +54,9 @@ fun VehicleSettingsScreen(
 ) {
     val vehicles by (viewModel?.vehicles?.collectAsState() ?: androidx.compose.runtime.remember {
         androidx.compose.runtime.mutableStateOf(emptyList())
+    })
+    val preferredVehicleId by (viewModel?.preferredVehicleId?.collectAsState() ?: androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(null)
     })
 
     // Outer Frame Canvas (412.dp x 917.dp)
@@ -171,10 +177,18 @@ fun VehicleSettingsScreen(
                     vehicles.forEach { v ->
                         val iconRes = if (v.type.equals("Motor", ignoreCase = true)) R.drawable.motor else R.drawable.mobil
                         val consumptionFormatted = "${FuelCalculator.formatEfficiency(v.fuelEfficiency)} km/L"
+                        val isPrimary = v.id == preferredVehicleId
+                        val isOfficial = v.isDefault
+
                         VehicleCardItem(
                             name = v.name,
                             consumption = consumptionFormatted,
                             iconRes = iconRes,
+                            isOfficial = isOfficial,
+                            isPrimary = isPrimary,
+                            onTogglePrimary = {
+                                viewModel?.setPreferredVehicle(v.id)
+                            },
                             onEditClick = {
                                 if (viewModel != null) {
                                     viewModel.vehicleToEditOrDelete.value = v
@@ -196,6 +210,9 @@ fun VehicleCardItem(
     name: String,
     consumption: String,
     iconRes: Int,
+    isOfficial: Boolean = true,
+    isPrimary: Boolean = false,
+    onTogglePrimary: () -> Unit = {},
     onEditClick: () -> Unit = {}
 ) {
     Row(
@@ -208,23 +225,24 @@ fun VehicleCardItem(
                 ambientColor = Color(0x166765AA)
             )
             .border(
-                width = 1.7.dp,
-                color = Color(0xFFCCC9F4),
+                width = if (isPrimary) 2.dp else 1.7.dp,
+                color = if (isPrimary) Color(0xFF7542EF) else Color(0xFFCCC9F4),
                 shape = RoundedCornerShape(size = 21.dp)
             )
             .fillMaxWidth()
-            .height(95.dp)
+            .height(98.dp)
             .background(color = Color(0xFFF1EFFF), shape = RoundedCornerShape(size = 21.dp))
-            .padding(start = 16.dp, end = 12.dp)
+            .padding(start = 14.dp, end = 12.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.weight(1f, fill = false)
         ) {
             // Box Ungu Muda untuk Ikon Kendaraan
             Box(
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(60.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color(0xFFBDB8F8)),
                 contentAlignment = Alignment.Center
@@ -233,48 +251,117 @@ fun VehicleCardItem(
                     painter = painterResource(id = iconRes),
                     contentDescription = name,
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(34.dp)
                 )
             }
 
-            // Teks Nama Kendaraan & Konsumsi BBM
+            // Teks Nama Kendaraan, Badges & Konsumsi BBM
             Column(
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+                modifier = Modifier.weight(1f, fill = false)
             ) {
-                Text(
-                    text = name,
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontFamily = FontFamily.Default,
-                        fontWeight = FontWeight(700),
-                        color = Color(0xFF090F59)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = name,
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF090F59)
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
-                )
+
+                    // Badge Resmi (Supabase) vs Kustom
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = if (isOfficial) Color(0xFF7542EF) else Color(0xFF64748B),
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = if (isOfficial) "Resmi" else "Kustom",
+                            style = TextStyle(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+                    }
+
+                    // Badge Utama
+                    if (isPrimary) {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Color(0xFFF59E0B),
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "★ Utama",
+                                style = TextStyle(
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            )
+                        }
+                    }
+                }
+
                 Text(
                     text = consumption,
                     style = TextStyle(
-                        fontSize = 14.sp,
-                        fontFamily = FontFamily.Default,
-                        fontWeight = FontWeight(500),
-                        color = Color(0xFF090F59)
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF303B65)
                     )
                 )
             }
         }
 
-        // Icon Pensil Edit dengan area sentuh yang nyaman
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clickable { onEditClick() },
-            contentAlignment = Alignment.Center
+        // Action Buttons: Bintang Utama & Pensil Edit
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Edit,
-                contentDescription = "Edit $name",
-                tint = Color(0xFF090F59),
-                modifier = Modifier.size(22.dp)
-            )
+            // Tombol Bintang Kendaraan Utama
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clickable { onTogglePrimary() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isPrimary) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                    contentDescription = if (isPrimary) "Kendaraan Utama" else "Jadikan Kendaraan Utama",
+                    tint = if (isPrimary) Color(0xFFF59E0B) else Color(0xFF9CA3AF),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // Icon Pensil Edit
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clickable { onEditClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Edit,
+                    contentDescription = "Edit $name",
+                    tint = Color(0xFF090F59),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }

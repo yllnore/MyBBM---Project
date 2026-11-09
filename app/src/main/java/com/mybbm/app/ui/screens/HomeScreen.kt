@@ -29,6 +29,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -144,6 +149,12 @@ fun HomeScreen(
 
     var fuelQuery by remember { mutableStateOf("") }
     var fuelTextFieldValue by remember { mutableStateOf(TextFieldValue(selectedFuel?.name ?: "", selection = TextRange((selectedFuel?.name ?: "").length))) }
+
+    val haptic = LocalHapticFeedback.current
+    var showErrorOrigin by remember { mutableStateOf(false) }
+    var showErrorDestination by remember { mutableStateOf(false) }
+    var showErrorVehicle by remember { mutableStateOf(false) }
+    var showErrorFuel by remember { mutableStateOf(false) }
 
     // Fungsi animasi ketik (typewriter) halus saat lokasi terdeteksi, dengan kursor ditempatkan di paling belakang/akhir teks (setelah huruf terakhir)
     val triggerTypingAnimation: (String) -> Unit = { fullText ->
@@ -550,7 +561,7 @@ fun HomeScreen(
 
             // 2. Keempat TextField dalam urutan Column utama
             Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 // 1. Lokasi Awal
@@ -559,10 +570,12 @@ fun HomeScreen(
                     placeholder = "Lokasi Awal",
                     iconResId = R.drawable.lokasi_awal,
                     isActive = activeMode == ActiveInputMode.ORIGIN,
+                    isError = showErrorOrigin,
                     focusRequester = originFocusRequester,
                     onValueChange = {
                         originTextFieldValue = it
                         originQuery = it.text
+                        showErrorOrigin = false
                         activeMode = ActiveInputMode.ORIGIN
                         viewModel.setOriginText(it.text)
                         viewModel.searchLocation(it.text)
@@ -602,8 +615,71 @@ fun HomeScreen(
                                 viewModel.startPickingLocation(MapPickMode.ORIGIN)
                             }
                         }
+                    },
+                    onClearClick = {
+                        originTextFieldValue = TextFieldValue("", selection = TextRange(0))
+                        originQuery = ""
+                        showErrorOrigin = false
+                        viewModel.setOrigin("")
+                        viewModel.clearSearchResults()
                     }
                 )
+
+                // Tombol Tukar Lokasi Awal ⇄ Lokasi Tujuan (Swap Route)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 1.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    HorizontalDivider(
+                        color = Color(0x33303B65),
+                        thickness = 1.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Surface(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            val tempVal = originTextFieldValue
+                            val tempQ = originQuery
+                            originTextFieldValue = destinationTextFieldValue
+                            originQuery = destinationQuery
+                            destinationTextFieldValue = tempVal
+                            destinationQuery = tempQ
+
+                            showErrorOrigin = false
+                            showErrorDestination = false
+
+                            viewModel.swapOriginAndDestination()
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFFCCDEFC),
+                        border = BorderStroke(1.2.dp, Color(0xFF7542EF)),
+                        shadowElevation = 2.dp,
+                        modifier = Modifier.height(28.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SwapVert,
+                                contentDescription = "Tukar Rute",
+                                tint = Color(0xFF7542EF),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Tukar Rute",
+                                style = TextStyle(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF7542EF)
+                                )
+                            )
+                        }
+                    }
+                }
 
                 // 2. Lokasi Tujuan
                 EditableInputField(
@@ -611,10 +687,12 @@ fun HomeScreen(
                     placeholder = "Lokasi Tujuan",
                     iconResId = R.drawable.lokasi_tujuan,
                     isActive = activeMode == ActiveInputMode.DESTINATION,
+                    isError = showErrorDestination,
                     focusRequester = destinationFocusRequester,
                     onValueChange = {
                         destinationTextFieldValue = it
                         destinationQuery = it.text
+                        showErrorDestination = false
                         activeMode = ActiveInputMode.DESTINATION
                         viewModel.setDestinationText(it.text)
                         viewModel.searchLocation(it.text)
@@ -655,6 +733,13 @@ fun HomeScreen(
                                 viewModel.startPickingLocation(MapPickMode.DESTINATION)
                             }
                         }
+                    },
+                    onClearClick = {
+                        destinationTextFieldValue = TextFieldValue("", selection = TextRange(0))
+                        destinationQuery = ""
+                        showErrorDestination = false
+                        viewModel.setDestination("")
+                        viewModel.clearSearchResults()
                     }
                 )
 
@@ -664,10 +749,12 @@ fun HomeScreen(
                     placeholder = "Pilih Kendaraan",
                     iconResId = null,
                     isActive = activeMode == ActiveInputMode.VEHICLE,
+                    isError = showErrorVehicle,
                     focusRequester = vehicleFocusRequester,
                     onValueChange = {
                         vehicleTextFieldValue = it
                         vehicleQuery = it.text
+                        showErrorVehicle = false
                         viewModel.setVehicleQuery(it.text)
                         viewModel.filterVehicles(it.text)
                     },
@@ -687,6 +774,14 @@ fun HomeScreen(
                             delay(50L)
                             fuelFocusRequester.requestFocus()
                         }
+                    },
+                    onClearClick = {
+                        vehicleTextFieldValue = TextFieldValue("", selection = TextRange(0))
+                        vehicleQuery = ""
+                        showErrorVehicle = false
+                        viewModel.selectVehicle(null)
+                        viewModel.setVehicleQuery("")
+                        viewModel.filterVehicles("")
                     }
                 )
 
@@ -696,10 +791,12 @@ fun HomeScreen(
                     placeholder = "Jenis BBM",
                     iconResId = null,
                     isActive = activeMode == ActiveInputMode.FUEL,
+                    isError = showErrorFuel,
                     focusRequester = fuelFocusRequester,
                     onValueChange = {
                         fuelTextFieldValue = it
                         fuelQuery = it.text
+                        showErrorFuel = false
                         viewModel.setFuelQuery(it.text)
                         viewModel.filterFuels(it.text)
                     },
@@ -716,6 +813,14 @@ fun HomeScreen(
                         focusManager.clearFocus()
                         viewModel.clearSearchResults()
                         coroutineScope.launch { bottomSheetState.collapse() }
+                    },
+                    onClearClick = {
+                        fuelTextFieldValue = TextFieldValue("", selection = TextRange(0))
+                        fuelQuery = ""
+                        showErrorFuel = false
+                        viewModel.selectFuel(null)
+                        viewModel.setFuelQuery("")
+                        viewModel.filterFuels("")
                     }
                 )
             }
@@ -725,20 +830,24 @@ fun HomeScreen(
             // Tombol Hitung Biaya Perjalanan (Tetap berada di bawah ke-4 TextField)
             Button(
                 onClick = {
-                    if (originCoord == null && originQuery.isBlank()) {
-                        viewModel.showToast("Silakan tentukan lokasi awal terlebih dahulu")
-                        return@Button
-                    }
-                    if (destinationCoord == null && destinationQuery.isBlank()) {
-                        viewModel.showToast("Silakan tentukan lokasi tujuan terlebih dahulu")
-                        return@Button
-                    }
-                    if (selectedVehicle == null && vehicleQuery.isBlank()) {
-                        viewModel.showToast("Silakan pilih kendaraan terlebih dahulu")
-                        return@Button
-                    }
-                    if (selectedFuel == null && fuelQuery.isBlank()) {
-                        viewModel.showToast("Silakan pilih jenis BBM terlebih dahulu")
+                    val hasOrigin = originCoord != null || originTextFieldValue.text.isNotBlank()
+                    val hasDestination = destinationCoord != null || destinationTextFieldValue.text.isNotBlank()
+                    val hasVehicle = selectedVehicle != null || vehicleTextFieldValue.text.isNotBlank()
+                    val hasFuel = selectedFuel != null || fuelTextFieldValue.text.isNotBlank()
+
+                    showErrorOrigin = !hasOrigin
+                    showErrorDestination = !hasDestination
+                    showErrorVehicle = !hasVehicle
+                    showErrorFuel = !hasFuel
+
+                    if (!hasOrigin || !hasDestination || !hasVehicle || !hasFuel) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        when {
+                            !hasOrigin -> viewModel.showToast("Silakan tentukan lokasi awal terlebih dahulu")
+                            !hasDestination -> viewModel.showToast("Silakan tentukan lokasi tujuan terlebih dahulu")
+                            !hasVehicle -> viewModel.showToast("Silakan pilih kendaraan terlebih dahulu")
+                            !hasFuel -> viewModel.showToast("Silakan pilih jenis BBM terlebih dahulu")
+                        }
                         return@Button
                     }
                     viewModel.calculateTripCost()
@@ -938,6 +1047,7 @@ fun HomeScreen(
                                                 mapCameraTrigger = System.currentTimeMillis()
 
                                                 if (activeMode == ActiveInputMode.ORIGIN) {
+                                                    showErrorOrigin = false
                                                     viewModel.selectOriginResult(item.searchResult)
                                                     originTextFieldValue = TextFieldValue(item.title, selection = TextRange(item.title.length))
                                                     originQuery = item.title
@@ -959,6 +1069,7 @@ fun HomeScreen(
                                                         }
                                                     }
                                                 } else {
+                                                    showErrorDestination = false
                                                     viewModel.selectDestinationResult(item.searchResult)
                                                     destinationTextFieldValue = TextFieldValue(item.title, selection = TextRange(item.title.length))
                                                     destinationQuery = item.title
@@ -972,6 +1083,7 @@ fun HomeScreen(
                                                 }
                                             }
                                             is SearchSuggestionItem.Vehicle -> {
+                                                showErrorVehicle = false
                                                 viewModel.selectVehicle(item.vehicle)
                                                 vehicleTextFieldValue = TextFieldValue(item.vehicle.name, selection = TextRange(item.vehicle.name.length))
                                                 vehicleQuery = item.vehicle.name
@@ -984,6 +1096,7 @@ fun HomeScreen(
                                                 }
                                             }
                                             is SearchSuggestionItem.Fuel -> {
+                                                showErrorFuel = false
                                                 viewModel.selectFuel(item.fuel)
                                                 fuelTextFieldValue = TextFieldValue(item.fuel.name, selection = TextRange(item.fuel.name.length))
                                                 fuelQuery = item.fuel.name
@@ -1065,21 +1178,30 @@ private fun EditableInputField(
     placeholder: String,
     iconResId: Int?,
     isActive: Boolean,
+    isError: Boolean = false,
     focusRequester: FocusRequester = remember { FocusRequester() },
     onValueChange: (TextFieldValue) -> Unit,
     onFocusChanged: (Boolean) -> Unit,
     imeAction: ImeAction = ImeAction.Default,
     onImeAction: () -> Unit = {},
-    onIconClick: (() -> Unit)? = null
+    onIconClick: (() -> Unit)? = null,
+    onClearClick: (() -> Unit)? = null
 ) {
+    val borderColor = when {
+        isError -> Color(0xFFEF4444)
+        isActive -> Color(0xFF7542EF)
+        else -> Color(0xFF303B65)
+    }
+    val borderWidth = if (isActive || isError) 1.8.dp else 1.3.dp
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(50.dp)
             .background(color = Color(0xFFCCDEFC), shape = RoundedCornerShape(8.dp))
             .border(
-                width = if (isActive) 1.8.dp else 1.3.dp,
-                color = if (isActive) Color(0xFF7542EF) else Color(0xFF303B65),
+                width = borderWidth,
+                color = borderColor,
                 shape = RoundedCornerShape(8.dp)
             )
             .clickable {
@@ -1127,7 +1249,7 @@ private fun EditableInputField(
                                 fontSize = 15.sp,
                                 fontFamily = FontFamily.Default,
                                 fontWeight = FontWeight.Normal,
-                                color = Color(0xFF11133E)
+                                color = if (isError) Color(0xFFDC2626) else Color(0xFF11133E)
                             )
                         )
                     }
@@ -1136,21 +1258,43 @@ private fun EditableInputField(
             )
         }
 
-        if (iconResId != null) {
-            Image(
-                painter = painterResource(id = iconResId),
-                contentDescription = placeholder,
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable {
-                        if (onIconClick != null) {
-                            onIconClick()
-                        } else {
-                            focusRequester.requestFocus()
-                            onFocusChanged(true)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (textFieldValue.text.isNotEmpty() && onClearClick != null) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .background(Color(0x22303B65), CircleShape)
+                        .clickable { onClearClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Hapus teks",
+                        tint = Color(0xFF11133E),
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+
+            if (iconResId != null) {
+                Image(
+                    painter = painterResource(id = iconResId),
+                    contentDescription = placeholder,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clickable {
+                            if (onIconClick != null) {
+                                onIconClick()
+                            } else {
+                                focusRequester.requestFocus()
+                                onFocusChanged(true)
+                            }
                         }
-                    }
-            )
+                )
+            }
         }
     }
 }

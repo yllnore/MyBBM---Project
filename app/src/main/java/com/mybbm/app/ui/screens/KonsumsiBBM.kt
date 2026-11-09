@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,6 +36,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -175,6 +177,7 @@ fun BbmSettingsScreen(
                             name = fuel.name,
                             price = "${FuelCalculator.formatRupiah(fuel.pricePerLiter)} / Liter",
                             iconRes = iconRes,
+                            isOfficial = fuel.isDefault,
                             onEditClick = {
                                 if (viewModel != null) {
                                     viewModel.fuelToEditOrDelete.value = fuel
@@ -196,6 +199,7 @@ fun BbmCardItem(
     name: String,
     price: String,
     iconRes: Int,
+    isOfficial: Boolean = true,
     onEditClick: () -> Unit = {}
 ) {
     Row(
@@ -219,7 +223,8 @@ fun BbmCardItem(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.weight(1f, fill = false)
         ) {
             // Box Ungu Muda Ikon BBM
             Box(
@@ -237,19 +242,49 @@ fun BbmCardItem(
                 )
             }
 
-            // Nama & Harga BBM
+            // Nama, Badge & Harga BBM
             Column(
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.weight(1f, fill = false)
             ) {
-                Text(
-                    text = name,
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontFamily = FontFamily.Default,
-                        fontWeight = FontWeight(700),
-                        color = Color(0xFF090F59)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = name,
+                        style = TextStyle(
+                            fontSize = 17.sp,
+                            fontFamily = FontFamily.Default,
+                            fontWeight = FontWeight(700),
+                            color = Color(0xFF090F59)
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                )
+
+                    // Badge Resmi vs Kustom
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = if (isOfficial) Color(0xFF7542EF) else Color(0xFF64748B),
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = if (isOfficial) "Resmi" else "Kustom",
+                            style = TextStyle(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+
                 Text(
                     text = price,
                     style = TextStyle(
