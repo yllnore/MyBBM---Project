@@ -78,6 +78,19 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+
+    applicationVariants.all {
+        outputs.all {
+            val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            if (output != null) {
+                if (buildType.name == "release") {
+                    output.outputFileName = "MyBBM-v1.0.apk"
+                } else if (buildType.name == "debug") {
+                    output.outputFileName = "MyBBM-v1.0-debug.apk"
+                }
+            }
+        }
+    }
 }
 
 dependencies {
