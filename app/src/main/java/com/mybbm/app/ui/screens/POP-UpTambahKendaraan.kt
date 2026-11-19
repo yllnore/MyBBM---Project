@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -42,14 +44,14 @@ fun AddVehicleDialog(
     onBatalClick: () -> Unit = {}
 ) {
     var nameInput by remember { mutableStateOf("") }
-    var typeInput by remember { mutableStateOf("") }
+    var typeInput by remember { mutableStateOf("Mobil") }
     var efficiencyInput by remember { mutableStateOf("") }
 
     // Card Container Utama
     Box(
         modifier = Modifier
             .width(320.dp)
-            .height(295.dp)
+            .height(305.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
@@ -88,13 +90,59 @@ fun AddVehicleDialog(
                 heightDp = 38.dp
             )
 
-            // Input Field 2: Jenis Kendaraan (Mobil / Motor)
-            DialogInputField(
-                value = typeInput,
-                onValueChange = { typeInput = it },
-                placeholder = "Jenis Kendaraan (Mobil/Motor)",
-                heightDp = 38.dp
-            )
+            // Input Field 2: Segmented Selector Jenis Kendaraan (Mobil | Motor)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(38.dp)
+                    .background(Color(0xFFE4E1FC), RoundedCornerShape(12.dp))
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Tab Mobil
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(
+                            if (typeInput == "Mobil") Color(0xFF7542EF) else Color.Transparent,
+                            RoundedCornerShape(9.dp)
+                        )
+                        .clickable { typeInput = "Mobil" },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Mobil",
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (typeInput == "Mobil") Color.White else Color(0xFF4A4E69)
+                        )
+                    )
+                }
+
+                // Tab Motor
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(
+                            if (typeInput == "Motor") Color(0xFF7542EF) else Color.Transparent,
+                            RoundedCornerShape(9.dp)
+                        )
+                        .clickable { typeInput = "Motor" },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Motor",
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (typeInput == "Motor") Color.White else Color(0xFF4A4E69)
+                        )
+                    )
+                }
+            }
 
             // Input Field 3: Konsumsi BBM km/L (Otomatis format ribuan titik seperti 1.000)
             DialogInputField(
@@ -112,7 +160,7 @@ fun AddVehicleDialog(
                 horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Tombol Simpan (Biru)
+                // Tombol Simpan (Ungu Tema Brand #7542EF)
                 Box(
                     modifier = Modifier
                         .shadow(
@@ -123,7 +171,7 @@ fun AddVehicleDialog(
                         .width(120.dp)
                         .height(38.dp)
                         .background(
-                            color = Color(0xFF5DB1E7),
+                            color = Color(0xFF7542EF),
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable {

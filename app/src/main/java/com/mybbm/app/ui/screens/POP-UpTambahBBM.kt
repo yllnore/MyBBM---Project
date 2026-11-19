@@ -108,7 +108,7 @@ fun AddBbmDialog(
                         .width(120.dp)
                         .height(38.dp)
                         .background(
-                            color = Color(0xFF5DB1E7),
+                            color = Color(0xFF7542EF),
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable {

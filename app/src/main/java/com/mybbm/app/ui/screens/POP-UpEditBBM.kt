@@ -86,14 +86,19 @@ fun EditBbmDialog(
                     )
                 )
 
-                Icon(
-                    imageVector = Icons.Outlined.Delete,
-                    contentDescription = "Hapus BBM",
-                    tint = Color(0xFF8271D4),
+                Box(
                     modifier = Modifier
-                        .size(24.dp)
-                        .clickable { onDeleteClick() }
-                )
+                        .size(36.dp)
+                        .clickable { onDeleteClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Hapus BBM",
+                        tint = Color(0xFFDC2626),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             // Input Field 1: Nama Jenis BBM
@@ -132,7 +137,7 @@ fun EditBbmDialog(
                         .width(120.dp)
                         .height(38.dp)
                         .background(
-                            color = Color(0xFF5DB1E7),
+                            color = Color(0xFF7542EF),
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable {

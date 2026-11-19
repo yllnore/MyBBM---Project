@@ -99,7 +99,7 @@ fun DeleteConfirmationDialog(
                         .width(115.dp)
                         .height(38.dp)
                         .background(
-                            color = Color(0xFF5DB1E7),
+                            color = Color(0xFFDC2626),
                             shape = RoundedCornerShape(
                                 topStart = 16.dp,
                                 topEnd = 16.dp,

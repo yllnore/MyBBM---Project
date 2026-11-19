@@ -95,7 +95,7 @@ fun DeleteBbmDialog(
                         .width(115.dp)
                         .height(38.dp)
                         .background(
-                            color = Color(0xFF5DB1E7),
+                            color = Color(0xFFDC2626),
                             shape = CircleShape
                         )
                         .clickable { onHapusClick() },
