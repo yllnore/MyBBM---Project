@@ -5,12 +5,18 @@ import com.mybbm.app.domain.engine.HaversineUtil
 import com.mybbm.app.domain.model.LatLng
 import com.mybbm.app.domain.model.SpbuInfo
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
-import org.json.JSONObject
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -61,6 +67,7 @@ class SpbuRepository(
 
     /**
      * Mengambil daftar SPBU di sepanjang rute perjalanan [routePoints] (dari asal hingga tujuan).
+     * Menggunakan 1x Single Batch Overpass Union Query agar 5x lebih cepat dan bebas HTTP 429.
      */
     suspend fun getSpbuAlongRoute(routePoints: List<LatLng>): List<SpbuInfo> = withContext(Dispatchers.IO) {
         if (routePoints.isEmpty()) return@withContext emptyList()
@@ -69,26 +76,164 @@ class SpbuRepository(
         }
 
         // Ambil 5 sampel titik di sepanjang rute (awal, 25%, 50%, 75%, akhir)
-        val sampleIndices = listOf(
+        val samplePoints = listOf(
             0,
             routePoints.size / 4,
             routePoints.size / 2,
             (routePoints.size * 3) / 4,
             routePoints.size - 1
-        ).distinct()
+        ).distinct().map { routePoints[it] }
 
-        val routeSpbuList = mutableListOf<SpbuInfo>()
-
-        for (index in sampleIndices) {
-            val point = routePoints[index]
-            val spbuList = getNearbySpbu(point)
-            if (spbuList.isNotEmpty()) {
-                // Ambil 1 SPBU terdekat untuk masing-masing titik sampel di sepanjang rute
-                routeSpbuList.add(spbuList.first())
-            }
+        // 1. Single Batch Overpass Union Query (1x HTTP request untuk semua titik sampel)
+        val batchCandidates = tryOverpassAlongPoints(samplePoints)
+        if (batchCandidates.isNotEmpty()) {
+            return@withContext selectDistinctSpbuAlongPoints(batchCandidates, samplePoints, maxResults = 5)
         }
 
-        return@withContext mutableListWithDistinctCoordinates(routeSpbuList).take(5)
+        // 2. Fallback paralel hemat request ke Nominatim (maks 2 titik kunci: awal & akhir)
+        Log.w(TAG, "Batch Overpass gagal/kosong, beralih ke fallback paralel Nominatim...")
+        val keyPoints = listOf(samplePoints.first(), samplePoints.last()).distinct()
+        val nominatimCandidates = coroutineScope {
+            keyPoints.map { point ->
+                async(Dispatchers.IO) { tryNominatim(point) }
+            }.awaitAll().flatten()
+        }
+        if (nominatimCandidates.isNotEmpty()) {
+            return@withContext selectDistinctSpbuAlongPoints(nominatimCandidates, samplePoints, maxResults = 5)
+        }
+
+        // 3. Fallback lokal offline (tanpa jaringan)
+        Log.w(TAG, "Fallback Nominatim kosong, menggunakan data SPBU lokal terdekat...")
+        val localCandidates = keyPoints.flatMap { getLocalFallback(it) }
+        return@withContext selectDistinctSpbuAlongPoints(localCandidates, samplePoints, maxResults = 5)
+    }
+
+    internal fun buildBatchOverpassQuery(samplePoints: List<LatLng>): String {
+        val unionClauses = samplePoints.joinToString("\n") { pt ->
+            """
+            node["amenity"="fuel"](around:$RADIUS_METERS,${pt.lat},${pt.lng});
+            way["amenity"="fuel"](around:$RADIUS_METERS,${pt.lat},${pt.lng});
+            """.trimIndent()
+        }
+        return "[out:json][timeout:10];(\n$unionClauses\n);out center 25;"
+    }
+
+    internal fun selectDistinctSpbuAlongPoints(
+        candidates: List<SpbuInfo>,
+        samplePoints: List<LatLng>,
+        maxResults: Int = 5
+    ): List<SpbuInfo> {
+        val uniqueCandidates = mutableListWithDistinctCoordinates(candidates)
+        if (uniqueCandidates.isEmpty() || samplePoints.isEmpty()) {
+            return uniqueCandidates.take(maxResults)
+        }
+
+        val remaining = uniqueCandidates.toMutableList()
+        val selected = mutableListOf<SpbuInfo>()
+
+        // Distribusikan 1 SPBU unik terdekat untuk setiap titik sampel di sepanjang rute
+        for (point in samplePoints) {
+            if (selected.size >= maxResults || remaining.isEmpty()) break
+            val bestMatch = remaining.minByOrNull { spbu ->
+                HaversineUtil.hitungJarakKm(point, LatLng(spbu.lat, spbu.lon), faktorJalan = 1.0).toDouble()
+            } ?: break
+
+            val distKm = HaversineUtil.hitungJarakKm(point, LatLng(bestMatch.lat, bestMatch.lon), faktorJalan = 1.0).toDouble()
+            selected.add(bestMatch.copy(distanceFormatted = formatDistance(distKm)))
+            remaining.remove(bestMatch)
+        }
+
+        // Jika slot masih tersisa dan masih ada kandidat unik, lengkapi berdasarkan jarak ke origin
+        if (selected.size < maxResults && remaining.isNotEmpty()) {
+            val origin = samplePoints.first()
+            val extras = remaining
+                .map { spbu ->
+                    val distKm = HaversineUtil.hitungJarakKm(origin, LatLng(spbu.lat, spbu.lon), faktorJalan = 1.0).toDouble()
+                    spbu.copy(distanceFormatted = formatDistance(distKm)) to distKm
+                }
+                .sortedBy { it.second }
+                .take(maxResults - selected.size)
+                .map { it.first }
+            selected.addAll(extras)
+        }
+
+        return selected.take(maxResults)
+    }
+
+    private fun tryOverpassAlongPoints(points: List<LatLng>): List<SpbuInfo> {
+        if (points.isEmpty()) return emptyList()
+        val query = buildBatchOverpassQuery(points)
+        val formBody = FormBody.Builder()
+            .add("data", query)
+            .build()
+
+        val request = Request.Builder()
+            .url(OVERPASS_URL)
+            .header("User-Agent", USER_AGENT)
+            .post(formBody)
+            .build()
+
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "Batch Overpass API gagal dengan HTTP ${response.code}: ${response.message}")
+                    return emptyList()
+                }
+
+                val body = response.body?.string() ?: return emptyList()
+                val parsed = parseOverpassResponse(body, points.first())
+                Log.i(TAG, "Batch Overpass API sukses menemukan ${parsed.size} kandidat SPBU sepanjang rute")
+                parsed.map { it.first }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Batch Overpass API call error: ${e.message}")
+            emptyList()
+        }
+    }
+
+    private fun parseOverpassResponse(body: String, referenceOrigin: LatLng): List<Pair<SpbuInfo, Double>> {
+        val root = Json.parseToJsonElement(body).jsonObject
+        val elements = root["elements"]?.jsonArray ?: return emptyList()
+        val spbuResults = mutableListOf<Pair<SpbuInfo, Double>>()
+
+        for (elemNode in elements) {
+            val elem = elemNode.jsonObject
+            val type = elem["type"]?.jsonPrimitive?.content.orEmpty()
+
+            val lat: Double
+            val lon: Double
+            if (type == "way") {
+                val center = elem["center"]?.jsonObject
+                lat = center?.get("lat")?.jsonPrimitive?.doubleOrNull ?: 0.0
+                lon = center?.get("lon")?.jsonPrimitive?.doubleOrNull ?: 0.0
+            } else {
+                lat = elem["lat"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                lon = elem["lon"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+            }
+
+            if (lat == 0.0 || lon == 0.0 || lat.isNaN() || lon.isNaN()) continue
+
+            val spbuCoord = LatLng(lat, lon)
+            val distanceKm = HaversineUtil.hitungJarakKm(referenceOrigin, spbuCoord, faktorJalan = 1.0).toDouble()
+
+            val tags = elem["tags"]?.jsonObject
+            val rawName = tags?.get("name")?.jsonPrimitive?.content?.trim().orEmpty()
+            val rawBrand = tags?.get("brand")?.jsonPrimitive?.content?.trim().orEmpty()
+            val rawOperator = tags?.get("operator")?.jsonPrimitive?.content?.trim().orEmpty()
+
+            val brand = detectBrand(rawBrand, rawName, rawOperator)
+            val name = formatSpbuName(rawName, rawBrand, rawOperator, brand)
+            val distanceFormatted = formatDistance(distanceKm)
+
+            spbuResults.add(
+                Pair(
+                    SpbuInfo(name = name, distanceFormatted = distanceFormatted, brand = brand, lat = lat, lon = lon),
+                    distanceKm
+                )
+            )
+        }
+
+        return spbuResults
     }
 
     private fun mutableListWithDistinctCoordinates(list: List<SpbuInfo>): List<SpbuInfo> {
@@ -137,49 +282,7 @@ class SpbuRepository(
                 }
 
                 val body = response.body?.string() ?: return emptyList()
-                val json = JSONObject(body)
-                val elements = json.optJSONArray("elements") ?: return emptyList()
-
-                val spbuResults = mutableListOf<Pair<SpbuInfo, Double>>()
-
-                for (i in 0 until elements.length()) {
-                    val elem = elements.optJSONObject(i) ?: continue
-                    val type = elem.optString("type", "")
-
-                    val lat: Double
-                    val lon: Double
-                    if (type == "way") {
-                        val center = elem.optJSONObject("center")
-                        lat = center?.optDouble("lat", 0.0) ?: 0.0
-                        lon = center?.optDouble("lon", 0.0) ?: 0.0
-                    } else {
-                        lat = elem.optDouble("lat", 0.0)
-                        lon = elem.optDouble("lon", 0.0)
-                    }
-
-                    if (lat == 0.0 || lon == 0.0 || lat.isNaN() || lon.isNaN()) continue
-
-                    val spbuCoord = LatLng(lat, lon)
-                    val distanceKm = HaversineUtil.hitungJarakKm(origin, spbuCoord, faktorJalan = 1.0).toDouble()
-
-                    val tags = elem.optJSONObject("tags")
-                    val rawName = tags?.optString("name", "")?.trim().orEmpty()
-                    val rawBrand = tags?.optString("brand", "")?.trim().orEmpty()
-                    val rawOperator = tags?.optString("operator", "")?.trim().orEmpty()
-
-                    val brand = detectBrand(rawBrand, rawName, rawOperator)
-                    val name = formatSpbuName(rawName, rawBrand, rawOperator, brand)
-                    val distanceFormatted = formatDistance(distanceKm)
-
-                    spbuResults.add(
-                        Pair(
-                            SpbuInfo(name = name, distanceFormatted = distanceFormatted, brand = brand, lat = lat, lon = lon),
-                            distanceKm
-                        )
-                    )
-                }
-
-                val sorted = spbuResults.sortedBy { it.second }.take(5).map { it.first }
+                val sorted = parseOverpassResponse(body, origin).sortedBy { it.second }.take(5).map { it.first }
                 Log.i(TAG, "Overpass API sukses menemukan ${sorted.size} SPBU terdekat")
                 sorted
             }
@@ -210,19 +313,19 @@ class SpbuRepository(
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return emptyList()
                 val body = response.body?.string() ?: return emptyList()
-                val array = JSONArray(body)
+                val array = Json.parseToJsonElement(body).jsonArray
 
                 val list = mutableListOf<Pair<SpbuInfo, Double>>()
-                for (i in 0 until array.length()) {
-                    val obj = array.optJSONObject(i) ?: continue
-                    val lat = obj.optString("lat").toDoubleOrNull() ?: continue
-                    val lon = obj.optString("lon").toDoubleOrNull() ?: continue
+                for (elemNode in array) {
+                    val obj = elemNode.jsonObject
+                    val lat = obj["lat"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: continue
+                    val lon = obj["lon"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: continue
 
                     val spbuCoord = LatLng(lat, lon)
                     val distanceKm = HaversineUtil.hitungJarakKm(origin, spbuCoord, faktorJalan = 1.0).toDouble()
 
-                    val displayName = obj.optString("display_name", "")
-                    val rawName = obj.optString("name", "")
+                    val displayName = obj["display_name"]?.jsonPrimitive?.content.orEmpty()
+                    val rawName = obj["name"]?.jsonPrimitive?.content.orEmpty()
                     val brand = detectBrand(rawName, displayName)
                     val cleanName = when {
                         rawName.isNotBlank() -> rawName
