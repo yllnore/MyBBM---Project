@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -78,38 +79,33 @@ fun VehicleSettingsScreen(
                         color = Color(0xFFBDB8F8),
                         shape = RoundedCornerShape(topStart = 27.dp, topEnd = 27.dp)
                     )
+                    .statusBarsPadding()
             ) {
-                // Status Bar / Spacer
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                }
-
                 // Title Bar (Kembali, Judul "Kendaraan", & Tambah (+))
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(66.dp)
-                        .padding(start = 20.dp, end = 20.dp, bottom = 12.dp)
+                        .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 12.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color(0xFF090F59),
+                        Box(
                             modifier = Modifier
-                                .size(28.dp)
-                                .clickable { onBackClick() }
-                        )
+                                .size(44.dp)
+                                .clickable { onBackClick() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color(0xFF090F59),
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
 
                         Text(
                             text = "Kendaraan",
@@ -123,20 +119,25 @@ fun VehicleSettingsScreen(
                     }
 
                     // Icon Plus (+)
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Tambah Kendaraan",
-                        tint = Color(0xFF090F59),
+                    Box(
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(44.dp)
                             .clickable {
                                 if (viewModel != null) {
                                     viewModel.showAddVehicleDialog.value = true
                                 } else {
                                     onAddClick()
                                 }
-                            }
-                    )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Tambah Kendaraan",
+                            tint = Color(0xFF090F59),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
 

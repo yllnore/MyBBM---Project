@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -62,7 +63,8 @@ fun HistoriScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 24.dp, top = 40.dp, end = 24.dp, bottom = 20.dp)
+                .statusBarsPadding()
+                .padding(start = 24.dp, top = 12.dp, end = 24.dp, bottom = 20.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

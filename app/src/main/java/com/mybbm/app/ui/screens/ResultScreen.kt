@@ -104,7 +104,8 @@ fun ResultScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 40.dp, end = 16.dp),
+                .statusBarsPadding()
+                .padding(top = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(

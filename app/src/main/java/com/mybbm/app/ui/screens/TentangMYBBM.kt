@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,7 +57,8 @@ fun TentangMyBbmScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(color = Color(0xFFC0B9FB))
-                .padding(start = 12.dp, top = 40.dp, end = 24.dp, bottom = 16.dp)
+                .statusBarsPadding()
+                .padding(start = 12.dp, top = 8.dp, end = 24.dp, bottom = 16.dp)
         ) {
             IconButton(onClick = onBackClick) {
                 Icon(

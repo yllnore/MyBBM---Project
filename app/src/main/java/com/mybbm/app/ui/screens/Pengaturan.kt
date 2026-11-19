@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -67,25 +68,15 @@ fun SettingsScreen(
                         color = Color(0xFFBDB8F8),
                         shape = RoundedCornerShape(topStart = 27.dp, topEnd = 27.dp)
                     )
+                    .statusBarsPadding()
             ) {
-                // 1. Status Bar Spacer
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                }
-
-                // 2. Header Bar (Judul "Pengaturan" & Tombol Silang Close Bulat seperti di Riwayat Perjalanan)
+                // Header Bar (Judul "Pengaturan" & Tombol Silang Close Bulat)
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(66.dp)
-                        .padding(start = 24.dp, end = 20.dp, bottom = 12.dp)
+                        .padding(start = 24.dp, end = 20.dp, top = 8.dp, bottom = 14.dp)
                 ) {
                     Text(
                         text = "Pengaturan",
