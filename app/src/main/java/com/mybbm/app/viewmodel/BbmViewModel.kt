@@ -47,16 +47,13 @@ import java.util.UUID
 
 enum class AppScreen {
     SPLASH,
-
     HOME,
     RESULT,
     SETTINGS,
     ABOUT,
     VEHICLES,
     FUELS,
-    HISTORI,
-    INPUT_ORIGIN,
-    INPUT_DESTINATION
+    HISTORI
 }
 
 enum class MapPickMode {

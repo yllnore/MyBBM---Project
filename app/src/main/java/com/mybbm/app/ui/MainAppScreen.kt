@@ -123,26 +123,6 @@ fun MainAppScreen(viewModel: BbmViewModel) {
                     viewModel = viewModel
                 )
             }
-            AppScreen.INPUT_ORIGIN -> {
-                MemasukkanLokasiAwalScreen(
-                    onCalculateClick = {
-                        viewModel.calculateTripCost()
-                    },
-                    onLocationItemClick = { chosen ->
-                        viewModel.setOrigin(chosen)
-                        viewModel.navigateTo(AppScreen.HOME)
-                    }
-                )
-            }
-            AppScreen.INPUT_DESTINATION -> {
-                MemasukkanLokasiTujuanScreen(
-                    onLocationSelected = { chosen ->
-                        viewModel.setDestination(chosen)
-                        viewModel.navigateTo(AppScreen.HOME)
-                    },
-                    onBackClick = { viewModel.navigateTo(AppScreen.HOME) }
-                )
-            }
         }
 
         // 2. Modals & Dialog Overlays
