@@ -8,10 +8,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
@@ -30,6 +33,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,11 +54,13 @@ fun EditBbmDialog(
             fuel?.pricePerLiter?.let { FuelCalculator.formatThousand(it) } ?: ""
         )
     }
+    var errorMessage by remember(fuel) { mutableStateOf<String?>(null) }
 
     Box(
         modifier = Modifier
             .width(320.dp)
-            .height(270.dp)
+            .wrapContentHeight()
+            .heightIn(min = 270.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
@@ -104,7 +110,10 @@ fun EditBbmDialog(
             // Input Field 1: Nama Jenis BBM
             DialogInputField(
                 value = nameInput,
-                onValueChange = { nameInput = it },
+                onValueChange = {
+                    nameInput = it
+                    errorMessage = null
+                },
                 placeholder = "Nama Jenis BBM",
                 heightDp = 38.dp
             )
@@ -112,13 +121,29 @@ fun EditBbmDialog(
             // Input Field 2: Harga BBM per Liter (Otomatis format ribuan titik seperti 10.000)
             DialogInputField(
                 value = priceInput,
-                onValueChange = { priceInput = FuelCalculator.formatDigitsAsThousand(it) },
+                onValueChange = {
+                    priceInput = FuelCalculator.formatDigitsAsThousand(it)
+                    errorMessage = null
+                },
                 placeholder = "Harga BBM per Liter",
                 heightDp = 38.dp,
                 keyboardType = KeyboardType.Number
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage!!,
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFFDC2626),
+                        textAlign = TextAlign.Center
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                )
+            } else {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
 
             // Baris Tombol Simpan & Batal
             Row(
@@ -141,9 +166,15 @@ fun EditBbmDialog(
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable {
-                            val price = FuelCalculator.parseThousand(priceInput) ?: fuel?.pricePerLiter ?: BigDecimal("10000")
-                            val id = fuel?.id ?: ""
-                            onSimpanClick(id, nameInput, price)
+                            val trimmedName = nameInput.trim()
+                            val price = FuelCalculator.parseThousand(priceInput)
+                            if (trimmedName.isEmpty() || price == null || price <= BigDecimal.ZERO) {
+                                errorMessage = "Harap isi nama dan nilai angka yang valid"
+                            } else {
+                                errorMessage = null
+                                val id = fuel?.id ?: ""
+                                onSimpanClick(id, trimmedName, price)
+                            }
                         },
                     contentAlignment = Alignment.Center
                 ) {

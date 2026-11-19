@@ -8,9 +8,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,11 +43,13 @@ fun AddBbmDialog(
 ) {
     var nameInput by remember { mutableStateOf("") }
     var priceInput by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Box(
         modifier = Modifier
             .width(320.dp)
-            .height(260.dp)
+            .wrapContentHeight()
+            .heightIn(min = 260.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
@@ -75,7 +80,10 @@ fun AddBbmDialog(
             // Input Field 1: Nama Jenis BBM
             DialogInputField(
                 value = nameInput,
-                onValueChange = { nameInput = it },
+                onValueChange = {
+                    nameInput = it
+                    errorMessage = null
+                },
                 placeholder = "Nama Jenis BBM",
                 heightDp = 38.dp
             )
@@ -83,13 +91,29 @@ fun AddBbmDialog(
             // Input Field 2: Harga BBM per Liter (Otomatis format ribuan titik seperti 12.500)
             DialogInputField(
                 value = priceInput,
-                onValueChange = { priceInput = FuelCalculator.formatDigitsAsThousand(it) },
+                onValueChange = {
+                    priceInput = FuelCalculator.formatDigitsAsThousand(it)
+                    errorMessage = null
+                },
                 placeholder = "Harga BBM per Liter (misal 12.500)",
                 heightDp = 38.dp,
                 keyboardType = KeyboardType.Number
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage!!,
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFFDC2626),
+                        textAlign = TextAlign.Center
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                )
+            } else {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
 
             // Baris Tombol Simpan & Batal
             Row(
@@ -112,9 +136,14 @@ fun AddBbmDialog(
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable {
-                            val price = FuelCalculator.parseThousand(priceInput) ?: BigDecimal("10000")
-                            val finalName = nameInput.ifBlank { "BBM BARU" }
-                            onSimpanClick(finalName, price)
+                            val trimmedName = nameInput.trim()
+                            val price = FuelCalculator.parseThousand(priceInput)
+                            if (trimmedName.isEmpty() || price == null || price <= BigDecimal.ZERO) {
+                                errorMessage = "Harap isi nama dan nilai angka yang valid"
+                            } else {
+                                errorMessage = null
+                                onSimpanClick(trimmedName, price)
+                            }
                         },
                     contentAlignment = Alignment.Center
                 ) {

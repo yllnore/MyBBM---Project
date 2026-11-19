@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,11 +56,13 @@ fun EditVehicleDialog(
             vehicle?.fuelEfficiency?.let { FuelCalculator.formatEfficiency(it) } ?: ""
         )
     }
+    var errorMessage by remember(vehicle) { mutableStateOf<String?>(null) }
 
     Box(
         modifier = Modifier
             .width(320.dp)
-            .height(315.dp)
+            .wrapContentHeight()
+            .heightIn(min = 315.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
@@ -108,7 +113,10 @@ fun EditVehicleDialog(
             // Input Field 1: Nama Kendaraan
             DialogInputField(
                 value = nameInput,
-                onValueChange = { nameInput = it },
+                onValueChange = {
+                    nameInput = it
+                    errorMessage = null
+                },
                 placeholder = "Nama Kendaraan",
                 heightDp = 38.dp
             )
@@ -170,13 +178,29 @@ fun EditVehicleDialog(
             // Input Field 3: Konsumsi BBM km/L (Otomatis format ribuan titik seperti 1.000)
             DialogInputField(
                 value = efficiencyInput,
-                onValueChange = { efficiencyInput = FuelCalculator.formatThousandInput(it) },
+                onValueChange = {
+                    efficiencyInput = FuelCalculator.formatThousandInput(it)
+                    errorMessage = null
+                },
                 placeholder = "Konsumsi BBM km/L",
                 heightDp = 38.dp,
                 keyboardType = KeyboardType.Number
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage!!,
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFFDC2626),
+                        textAlign = TextAlign.Center
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                )
+            } else {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
 
             // Baris Tombol Simpan & Batal
             Row(
@@ -199,9 +223,16 @@ fun EditVehicleDialog(
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable {
-                            val eff = FuelCalculator.parseEfficiency(efficiencyInput) ?: vehicle?.fuelEfficiency ?: BigDecimal("12.0")
-                            val id = vehicle?.id ?: ""
-                            onSimpanClick(id, nameInput, typeInput, eff)
+                            val trimmedName = nameInput.trim()
+                            val eff = FuelCalculator.parseEfficiency(efficiencyInput)
+                            if (trimmedName.isEmpty() || eff == null || eff <= BigDecimal.ZERO) {
+                                errorMessage = "Harap isi nama dan nilai angka yang valid"
+                            } else {
+                                errorMessage = null
+                                val id = vehicle?.id ?: ""
+                                val finalType = typeInput.ifBlank { "Mobil" }
+                                onSimpanClick(id, trimmedName, finalType, eff)
+                            }
                         },
                     contentAlignment = Alignment.Center
                 ) {

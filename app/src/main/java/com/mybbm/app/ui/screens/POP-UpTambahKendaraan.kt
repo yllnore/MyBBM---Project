@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -46,12 +48,14 @@ fun AddVehicleDialog(
     var nameInput by remember { mutableStateOf("") }
     var typeInput by remember { mutableStateOf("Mobil") }
     var efficiencyInput by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Card Container Utama
     Box(
         modifier = Modifier
             .width(320.dp)
-            .height(305.dp)
+            .wrapContentHeight()
+            .heightIn(min = 305.dp)
             .border(
                 width = 1.dp,
                 color = Color(0xFFBFB7FA),
@@ -85,7 +89,10 @@ fun AddVehicleDialog(
             // Input Field 1: Nama Kendaraan
             DialogInputField(
                 value = nameInput,
-                onValueChange = { nameInput = it },
+                onValueChange = {
+                    nameInput = it
+                    errorMessage = null
+                },
                 placeholder = "Nama Kendaraan",
                 heightDp = 38.dp
             )
@@ -147,13 +154,29 @@ fun AddVehicleDialog(
             // Input Field 3: Konsumsi BBM km/L (Otomatis format ribuan titik seperti 1.000)
             DialogInputField(
                 value = efficiencyInput,
-                onValueChange = { efficiencyInput = FuelCalculator.formatThousandInput(it) },
+                onValueChange = {
+                    efficiencyInput = FuelCalculator.formatThousandInput(it)
+                    errorMessage = null
+                },
                 placeholder = "Konsumsi BBM km/L (misal 15.0)",
                 heightDp = 38.dp,
                 keyboardType = KeyboardType.Number
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage!!,
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFFDC2626),
+                        textAlign = TextAlign.Center
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                )
+            } else {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
 
             // Baris Tombol Simpan & Batal
             Row(
@@ -175,10 +198,15 @@ fun AddVehicleDialog(
                             shape = RoundedCornerShape(16.dp)
                         )
                         .clickable {
-                            val eff = FuelCalculator.parseEfficiency(efficiencyInput) ?: BigDecimal("12.0")
-                            val finalName = nameInput.ifBlank { "KENDARAAN BARU" }
-                            val finalType = typeInput.ifBlank { "Mobil" }
-                            onSimpanClick(finalName, finalType, eff)
+                            val trimmedName = nameInput.trim()
+                            val eff = FuelCalculator.parseEfficiency(efficiencyInput)
+                            if (trimmedName.isEmpty() || eff == null || eff <= BigDecimal.ZERO) {
+                                errorMessage = "Harap isi nama dan nilai angka yang valid"
+                            } else {
+                                errorMessage = null
+                                val finalType = typeInput.ifBlank { "Mobil" }
+                                onSimpanClick(trimmedName, finalType, eff)
+                            }
                         },
                     contentAlignment = Alignment.Center
                 ) {
