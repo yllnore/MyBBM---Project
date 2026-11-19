@@ -9,6 +9,7 @@ import com.mybbm.app.data.local.database.AppDatabase
 import com.mybbm.app.data.local.entity.BbmKustomEntity
 import com.mybbm.app.data.local.entity.KendaraanKustomEntity
 import com.mybbm.app.data.local.entity.RiwayatEntity
+import com.mybbm.app.data.local.seed.OfflineSeedHelper
 import com.mybbm.app.data.remote.location.LocationRepository
 import com.mybbm.app.data.remote.routing.OsrmRouteRepository
 import com.mybbm.app.data.remote.spbu.SpbuRepository
@@ -343,17 +344,38 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Mengambil data riil dari Supabase (tabel `kendaraan` dan `harga_bbm`)
      * dan menyimpannya ke cache lokal Room Database.
-     * Karena `vehicles` dan `fuels` mengobservasi Flow dari Room,
-     * tampilan UI akan otomatis terupdate secara realtime begitu data tersimpan.
+     * Jika database lokal masih kosong (pertama kali install / offline / Supabase tidak tersedia),
+     * langsung mengisi seed lokal dari [OfflineSeedHelper] (`assets/seed_reference.json` + 10 kendaraan populer)
+     * agar aplikasi langsung siap pakai secara offline.
      */
     fun loadDefaultDatasetsFromSupabase() {
         viewModelScope.launch(Dispatchers.IO) {
+            // 1. Offline-First: isi segera jika Room masih kosong agar pengguna tidak menunggu jaringan
+            ensureLocalSeedDataPresent()
+
+            // 2. Coba sinkronisasi online dari Supabase (mengganti data is_default = 1 bila berhasil)
             try {
                 supabaseDefaultRepository.syncKendaraan(kendaraanKustomDao)
                 supabaseDefaultRepository.syncBbm(bbmKustomDao)
             } catch (e: Exception) {
                 android.util.Log.e("BbmViewModel", "Gagal sinkronisasi data dari Supabase: ${e.message}", e)
             }
+
+            // 3. Fallback defensif: pastikan database tidak pernah kosong setelah upaya sinkronisasi
+            ensureLocalSeedDataPresent()
+        }
+    }
+
+    private suspend fun ensureLocalSeedDataPresent() {
+        try {
+            if (kendaraanKustomDao.getAllKendaraanList().isEmpty()) {
+                kendaraanKustomDao.insertAll(OfflineSeedHelper.getDefaultVehicles())
+            }
+            if (bbmKustomDao.getAllBbmList().isEmpty()) {
+                bbmKustomDao.insertAll(OfflineSeedHelper.getDefaultFuels(getApplication()))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("BbmViewModel", "Gagal memuat seed lokal offline: ${e.message}", e)
         }
     }
 
