@@ -52,5 +52,6 @@ data class CalculationResult(
     val totalLiters: java.math.BigDecimal,
     val totalCost: java.math.BigDecimal,
     val routePoints: List<LatLng> = emptyList(),
-    val nearbySpbu: List<SpbuInfo> = emptyList()
+    val nearbySpbu: List<SpbuInfo> = emptyList(),
+    val isFallback: Boolean = false
 )

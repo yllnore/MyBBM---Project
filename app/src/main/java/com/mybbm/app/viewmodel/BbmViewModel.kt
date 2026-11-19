@@ -662,6 +662,40 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private suspend fun resolveCoordinateSmart(
+        query: String,
+        existingCoord: LatLng?,
+        isOrigin: Boolean
+    ): LatLng {
+        if (existingCoord != null) return existingCoord
+
+        val trimmed = query.trim()
+        if (trimmed.isNotEmpty()) {
+            // 1. Cocokkan terlebih dahulu dengan hasil pencarian autocomplete terakhir
+            val cachedMatch = _searchResults.value.firstOrNull { item ->
+                item.title.equals(trimmed, ignoreCase = true) ||
+                    item.name.equals(trimmed, ignoreCase = true) ||
+                    item.displayName.contains(trimmed, ignoreCase = true)
+            }
+            if (cachedMatch != null) {
+                return LatLng(cachedMatch.lat, cachedMatch.lon)
+            }
+
+            // 2. Auto-resolve via LocationRepository (Nominatim online / KNOWN_LANDMARKS offline)
+            val searched = try {
+                locationRepository.searchLocation(trimmed).firstOrNull()
+            } catch (_: Exception) {
+                null
+            }
+            if (searched != null) {
+                return LatLng(searched.lat, searched.lon)
+            }
+        }
+
+        // 3. Fallback ke kamus koordinat statis Kalimantan Timur
+        return resolveCoordinate(trimmed, isOrigin = isOrigin)
+    }
+
     /**
      * Menjalankan kalkulasi rute via OSRM API dan menghitung estimasi biaya BBM.
      * Hasil kalkulasi disimpan ke Room Database (Offline RiwayatEntity).
@@ -670,10 +704,17 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         val vehicle = _selectedVehicle.value ?: vehicles.value.firstOrNull() ?: VehicleModel("1", "KENDARAAN", "Mobil", BigDecimal("15.0"))
         val fuel = _selectedFuel.value ?: fuels.value.firstOrNull() ?: FuelModel("1", "BBM", BigDecimal("10000"))
 
-        val originCoord = _originCoord.value ?: resolveCoordinate(_origin.value, isOrigin = true)
-        val destCoord = _destinationCoord.value ?: resolveCoordinate(_destination.value, isOrigin = false)
+        val originQuery = _origin.value
+        val destQuery = _destination.value
+        val existingOriginCoord = _originCoord.value
+        val existingDestCoord = _destinationCoord.value
 
         viewModelScope.launch {
+            val originCoord = resolveCoordinateSmart(originQuery, existingOriginCoord, isOrigin = true)
+            val destCoord = resolveCoordinateSmart(destQuery, existingDestCoord, isOrigin = false)
+            _originCoord.value = originCoord
+            _destinationCoord.value = destCoord
+
             val output = hitungBiayaUseCase.execute(
                 origin = originCoord,
                 destination = destCoord,
@@ -684,8 +725,8 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
             _routePoints.value = output.polylinePoints
 
             val result = CalculationResult(
-                originName = _origin.value.ifBlank { "Samarinda (Polnes)" },
-                destinationName = _destination.value.ifBlank { "Balikpapan" },
+                originName = originQuery.ifBlank { "Samarinda (Polnes)" },
+                destinationName = destQuery.ifBlank { "Balikpapan" },
                 vehicleName = vehicle.name,
                 fuelType = fuel.name,
                 fuelEfficiency = vehicle.fuelEfficiency,
@@ -694,7 +735,8 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
                 totalLiters = output.totalLiters,
                 totalCost = output.totalCost,
                 routePoints = output.polylinePoints,
-                nearbySpbu = emptyList()
+                nearbySpbu = emptyList(),
+                isFallback = output.isFallback
             )
             _calculationResult.value = result
 
@@ -777,7 +819,8 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
                 totalLiters = item.totalLiters,
                 totalCost = item.totalCost,
                 routePoints = routePts,
-                nearbySpbu = emptyList()
+                nearbySpbu = emptyList(),
+                isFallback = route?.isFallback ?: true
             )
             _calculationResult.value = result
             navigateTo(AppScreen.RESULT)
