@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
 import com.mybbm.app.util.FuelCalculator
+import com.mybbm.app.util.FuelIconResolver
 import com.mybbm.app.viewmodel.BbmViewModel
 
 @Composable
@@ -170,7 +171,7 @@ fun BbmSettingsScreen(
                     }
                 } else {
                     fuels.forEach { fuel ->
-                        val iconRes = fuel.iconResId ?: R.drawable.pertamax
+                        val iconRes = FuelIconResolver.resolveIcon(fuel.name)
                         BbmCardItem(
                             name = fuel.name,
                             price = "${FuelCalculator.formatRupiah(fuel.pricePerLiter)} / Liter",

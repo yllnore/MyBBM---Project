@@ -23,6 +23,7 @@ import com.mybbm.app.domain.model.SearchSuggestionItem
 import com.mybbm.app.domain.model.VehicleModel
 import com.mybbm.app.domain.usecase.HitungBiayaUseCase
 import com.mybbm.app.util.DeviceLocationHelper
+import com.mybbm.app.util.FuelIconResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
@@ -238,13 +239,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     val fuels: StateFlow<List<FuelModel>> = bbmKustomDao.getAllBbm()
         .map { list ->
             list.map {
-                val iconRes = it.iconResId ?: when {
-                    it.nama.contains("PERTALITE", ignoreCase = true) -> R.drawable.pertalite
-                    it.nama.contains("TURBO", ignoreCase = true) -> R.drawable.pertamax_turbo
-                    it.nama.contains("PERTAMAX", ignoreCase = true) -> R.drawable.pertamax
-                    it.nama.contains("SOLAR", ignoreCase = true) || it.nama.contains("DEX", ignoreCase = true) -> R.drawable.solar
-                    else -> R.drawable.pertamax
-                }
+                val iconRes = FuelIconResolver.resolveIcon(it.nama)
                 val colorHex = it.warnaHex ?: when {
                     it.nama.contains("PERTALITE", ignoreCase = true) -> "#10B981"
                     it.nama.contains("TURBO", ignoreCase = true) -> "#EF4444"
@@ -819,7 +814,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
                 id = UUID.randomUUID().toString(),
                 nama = name.uppercase().trim(),
                 harga = price.toDouble(),
-                iconResId = R.drawable.pertamax,
+                iconResId = FuelIconResolver.resolveIcon(name),
                 isDefault = false
             )
             bbmKustomDao.insertBbm(entity)
@@ -835,7 +830,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
                 id = id,
                 nama = name.uppercase().trim(),
                 harga = price.toDouble(),
-                iconResId = existing?.iconResId ?: R.drawable.pertamax,
+                iconResId = FuelIconResolver.resolveIcon(name),
                 warnaHex = existing?.colorHex,
                 isDefault = existing?.isDefault ?: false
             )

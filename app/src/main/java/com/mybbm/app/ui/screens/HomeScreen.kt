@@ -57,6 +57,7 @@ import com.mybbm.app.domain.model.SearchSuggestionItem
 import com.mybbm.app.ui.components.MapVisualOverlay
 import com.mybbm.app.ui.components.OsmMapView
 import com.mybbm.app.util.DeviceLocationHelper
+import com.mybbm.app.util.FuelIconResolver
 import com.mybbm.app.viewmodel.BbmViewModel
 import com.mybbm.app.viewmodel.MapPickMode
 import kotlinx.coroutines.delay
@@ -1006,7 +1007,7 @@ fun HomeScreen(
                                         )
                                     }
                                     is SearchSuggestionItem.Fuel -> {
-                                        val iconRes = item.fuel.iconResId ?: R.drawable.pertamax
+                                        val iconRes = FuelIconResolver.resolveIcon(item.fuel.name)
                                         Image(
                                             painter = painterResource(id = iconRes),
                                             contentDescription = null,
