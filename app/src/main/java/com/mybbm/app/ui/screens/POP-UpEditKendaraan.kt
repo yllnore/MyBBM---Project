@@ -184,7 +184,7 @@ fun EditVehicleDialog(
                 },
                 placeholder = "Konsumsi BBM km/L",
                 heightDp = 38.dp,
-                keyboardType = KeyboardType.Number
+                keyboardType = KeyboardType.Decimal
             )
 
             if (errorMessage != null) {
@@ -225,11 +225,11 @@ fun EditVehicleDialog(
                         .clickable {
                             val trimmedName = nameInput.trim()
                             val eff = FuelCalculator.parseEfficiency(efficiencyInput)
+                            val id = vehicle?.id?.takeIf { it.isNotBlank() }
                             if (trimmedName.isEmpty() || eff == null || eff <= BigDecimal.ZERO) {
                                 errorMessage = "Harap isi nama dan nilai angka yang valid"
-                            } else {
+                            } else if (id != null) {
                                 errorMessage = null
-                                val id = vehicle?.id ?: ""
                                 val finalType = typeInput.ifBlank { "Mobil" }
                                 onSimpanClick(id, trimmedName, finalType, eff)
                             }

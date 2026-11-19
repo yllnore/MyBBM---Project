@@ -53,5 +53,6 @@ data class CalculationResult(
     val totalCost: java.math.BigDecimal,
     val routePoints: List<LatLng> = emptyList(),
     val nearbySpbu: List<SpbuInfo> = emptyList(),
-    val isFallback: Boolean = false
+    val isFallback: Boolean = false,
+    val isLoadingSpbu: Boolean = false
 )

@@ -29,6 +29,9 @@ interface KendaraanKustomDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(kendaraanList: List<KendaraanKustomEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertDefaultAll(kendaraanList: List<KendaraanKustomEntity>)
+
     @Update
     suspend fun updateKendaraan(kendaraan: KendaraanKustomEntity)
 
@@ -44,7 +47,7 @@ interface KendaraanKustomDao {
     @Transaction
     suspend fun syncDefaultKendaraan(kendaraanList: List<KendaraanKustomEntity>) {
         deleteDefaultKendaraan()
-        insertAll(kendaraanList)
+        insertDefaultAll(kendaraanList)
     }
 
     @Query("DELETE FROM kendaraan_kustom")
@@ -74,6 +77,9 @@ interface BbmKustomDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(bbmList: List<BbmKustomEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertDefaultAll(bbmList: List<BbmKustomEntity>)
+
     @Update
     suspend fun updateBbm(bbm: BbmKustomEntity)
 
@@ -89,7 +95,7 @@ interface BbmKustomDao {
     @Transaction
     suspend fun syncDefaultBbm(bbmList: List<BbmKustomEntity>) {
         deleteDefaultBbm()
-        insertAll(bbmList)
+        insertDefaultAll(bbmList)
     }
 
     @Query("DELETE FROM bbm_kustom")

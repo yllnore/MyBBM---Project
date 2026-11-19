@@ -209,4 +209,88 @@ class SpbuRepositoryTest {
         assertTrue("Maksimal 5 SPBU dikembalikan", result.size <= 5)
         assertTrue("Fallback hemat request (1 Overpass + maks 2 Nominatim)", requestCounter.get() <= 3)
     }
+
+    @Test
+    fun testGetSpbuAlongRoute_twoPointOfflineRouteCoversOriginAndDestination() = runBlocking {
+        val offlineClient = OkHttpClient.Builder()
+            .addInterceptor {
+                throw java.io.IOException("Device offline")
+            }
+            .build()
+
+        val testRepo = SpbuRepository(offlineClient)
+        val offlineTwoPointRoute = listOf(
+            LatLng(-0.502106, 117.153709), // Samarinda
+            LatLng(-1.265386, 116.831200)  // Balikpapan
+        )
+
+        val result = testRepo.getSpbuAlongRoute(offlineTwoPointRoute)
+
+        assertTrue("Rute offline 2 titik harus mengembalikan SPBU", result.isNotEmpty())
+        assertTrue(
+            "Rute offline Samarinda-Balikpapan harus mencakup SPBU dekat tujuan Balikpapan",
+            result.any { it.lat < -1.0 }
+        )
+        assertTrue(
+            "Rute offline Samarinda-Balikpapan harus mencakup SPBU dekat asal Samarinda",
+            result.any { it.lat > -0.7 }
+        )
+    }
+
+    @Test
+    fun testGetSpbuAlongRoute_acceptsEquatorialCoordinatesWithZeroLatitude() = runBlocking {
+        val equatorJson = """
+            {
+              "elements": [
+                {
+                  "type": "node",
+                  "lat": 0.0,
+                  "lon": 117.5000,
+                  "tags": { "name": "SPBU Khatulistiwa Santan", "brand": "Pertamina" }
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val fakeClient = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(equatorJson.toResponseBody("application/json".toMediaType()))
+                    .build()
+            }
+            .build()
+
+        val testRepo = SpbuRepository(fakeClient)
+        val route = listOf(
+            LatLng(-0.0100, 117.4900),
+            LatLng(0.0100, 117.5100)
+        )
+
+        val result = testRepo.getSpbuAlongRoute(route)
+        assertEquals(1, result.size)
+        assertEquals("SPBU Khatulistiwa Santan", result.first().name)
+        assertEquals(0.0, result.first().lat, 0.0001)
+    }
+
+    @Test
+    fun testSelectDistinctSpbuAlongPoints_formatsDistanceConsistentlyFromOrigin() {
+        val samplePoints = listOf(
+            LatLng(-0.5000, 117.1500), // Samarinda (origin)
+            LatLng(-1.2500, 116.8500)  // Balikpapan (~90 km away)
+        )
+        val candidates = listOf(
+            SpbuInfo("SPBU Samarinda", "0 m", "Pertamina", -0.5010, 117.1505),
+            SpbuInfo("SPBU Balikpapan", "0 m", "Pertamina", -1.2505, 116.8502)
+        )
+
+        val selected = repository.selectDistinctSpbuAlongPoints(candidates, samplePoints, maxResults = 5)
+
+        assertEquals(2, selected.size)
+        assertTrue("SPBU dekat origin harus < 1 km (${selected[0].distanceFormatted})", selected[0].distanceFormatted.endsWith("m"))
+        assertTrue("SPBU dekat tujuan harus menunjukkan jarak dari origin dalam km (${selected[1].distanceFormatted})", selected[1].distanceFormatted.endsWith("km"))
+    }
 }

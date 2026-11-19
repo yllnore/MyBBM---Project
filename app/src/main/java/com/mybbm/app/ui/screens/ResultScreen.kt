@@ -210,11 +210,11 @@ fun ResultScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             // Main Result Card (Rute Tujuan Awal sampai Akhir, Total Biaya, Estimasi BBM, dan Jarak Tempuh)
-            val totalCostText = result?.let { FuelCalculator.formatRupiah(it.totalCost) } ?: "Rp. 85.000"
-            val totalLiterText = result?.let { FuelCalculator.formatLiters(it.totalLiters) } ?: "6.8 Liter"
-            val distanceText = result?.let { FuelCalculator.formatDistance(it.distanceKm) } ?: "12,5 km"
-            val originNameText = result?.originName?.ifBlank { "Lokasi Awal" } ?: "Lokasi Awal"
-            val destNameText = result?.destinationName?.ifBlank { "Lokasi Tujuan" } ?: "Lokasi Tujuan"
+            val totalCostText = result?.let { FuelCalculator.formatRupiah(it.totalCost) } ?: "..."
+            val totalLiterText = result?.let { FuelCalculator.formatLiters(it.totalLiters) } ?: "..."
+            val distanceText = result?.let { FuelCalculator.formatDistance(it.distanceKm) } ?: "..."
+            val originNameText = result?.originName?.ifBlank { "Lokasi Awal" } ?: "Memuat..."
+            val destNameText = result?.destinationName?.ifBlank { "Lokasi Tujuan" } ?: "Memuat..."
 
             Card(
                 modifier = Modifier
@@ -481,8 +481,9 @@ fun ResultScreen(
 
                 // SPBU List Items (Data riil dari OpenStreetMap Overpass API)
                 val spbuList = result?.nearbySpbu.orEmpty()
+                val isLoadingSpbu = result == null || result?.isLoadingSpbu == true
 
-                if (spbuList.isEmpty()) {
+                if (spbuList.isEmpty() && isLoadingSpbu) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -507,6 +508,22 @@ fun ResultScreen(
                                 )
                             )
                         }
+                    }
+                } else if (spbuList.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Tidak ditemukan SPBU di sekitar rute.",
+                            style = TextStyle(
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF303B65)
+                            )
+                        )
                     }
                 } else {
                     var expandedSpbuIndex by remember { mutableStateOf<Int?>(null) }

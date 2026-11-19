@@ -71,18 +71,22 @@ class SpbuRepository(
      */
     suspend fun getSpbuAlongRoute(routePoints: List<LatLng>): List<SpbuInfo> = withContext(Dispatchers.IO) {
         if (routePoints.isEmpty()) return@withContext emptyList()
-        if (routePoints.size <= 3) {
+        if (routePoints.size == 1) {
             return@withContext getNearbySpbu(routePoints.first())
         }
 
-        // Ambil 5 sampel titik di sepanjang rute (awal, 25%, 50%, 75%, akhir)
-        val samplePoints = listOf(
-            0,
-            routePoints.size / 4,
-            routePoints.size / 2,
-            (routePoints.size * 3) / 4,
-            routePoints.size - 1
-        ).distinct().map { routePoints[it] }
+        // Ambil hingga 5 sampel titik di sepanjang rute (awal, 25%, 50%, 75%, akhir)
+        val samplePoints = if (routePoints.size <= 5) {
+            routePoints.distinct()
+        } else {
+            listOf(
+                0,
+                routePoints.size / 4,
+                routePoints.size / 2,
+                (routePoints.size * 3) / 4,
+                routePoints.size - 1
+            ).distinct().map { routePoints[it] }
+        }
 
         // 1. Single Batch Overpass Union Query (1x HTTP request untuk semua titik sampel)
         val batchCandidates = tryOverpassAlongPoints(samplePoints)
@@ -131,6 +135,8 @@ class SpbuRepository(
         val remaining = uniqueCandidates.toMutableList()
         val selected = mutableListOf<SpbuInfo>()
 
+        val origin = samplePoints.first()
+
         // Distribusikan 1 SPBU unik terdekat untuk setiap titik sampel di sepanjang rute
         for (point in samplePoints) {
             if (selected.size >= maxResults || remaining.isEmpty()) break
@@ -138,14 +144,13 @@ class SpbuRepository(
                 HaversineUtil.hitungJarakKm(point, LatLng(spbu.lat, spbu.lon), faktorJalan = 1.0).toDouble()
             } ?: break
 
-            val distKm = HaversineUtil.hitungJarakKm(point, LatLng(bestMatch.lat, bestMatch.lon), faktorJalan = 1.0).toDouble()
-            selected.add(bestMatch.copy(distanceFormatted = formatDistance(distKm)))
+            val distFromOriginKm = HaversineUtil.hitungJarakKm(origin, LatLng(bestMatch.lat, bestMatch.lon), faktorJalan = 1.0).toDouble()
+            selected.add(bestMatch.copy(distanceFormatted = formatDistance(distFromOriginKm)))
             remaining.remove(bestMatch)
         }
 
         // Jika slot masih tersisa dan masih ada kandidat unik, lengkapi berdasarkan jarak ke origin
         if (selected.size < maxResults && remaining.isNotEmpty()) {
-            val origin = samplePoints.first()
             val extras = remaining
                 .map { spbu ->
                     val distKm = HaversineUtil.hitungJarakKm(origin, LatLng(spbu.lat, spbu.lon), faktorJalan = 1.0).toDouble()
@@ -204,14 +209,14 @@ class SpbuRepository(
             val lon: Double
             if (type == "way") {
                 val center = elem["center"]?.jsonObject
-                lat = center?.get("lat")?.jsonPrimitive?.doubleOrNull ?: 0.0
-                lon = center?.get("lon")?.jsonPrimitive?.doubleOrNull ?: 0.0
+                lat = center?.get("lat")?.jsonPrimitive?.doubleOrNull ?: continue
+                lon = center["lon"]?.jsonPrimitive?.doubleOrNull ?: continue
             } else {
-                lat = elem["lat"]?.jsonPrimitive?.doubleOrNull ?: 0.0
-                lon = elem["lon"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                lat = elem["lat"]?.jsonPrimitive?.doubleOrNull ?: continue
+                lon = elem["lon"]?.jsonPrimitive?.doubleOrNull ?: continue
             }
 
-            if (lat == 0.0 || lon == 0.0 || lat.isNaN() || lon.isNaN()) continue
+            if ((lat == 0.0 && lon == 0.0) || lat.isNaN() || lon.isNaN()) continue
 
             val spbuCoord = LatLng(lat, lon)
             val distanceKm = HaversineUtil.hitungJarakKm(referenceOrigin, spbuCoord, faktorJalan = 1.0).toDouble()

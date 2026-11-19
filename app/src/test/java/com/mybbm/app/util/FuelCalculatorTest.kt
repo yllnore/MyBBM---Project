@@ -84,4 +84,23 @@ class FuelCalculatorTest {
         assertEquals(BigDecimal("12500"), FuelCalculator.parseThousand("12.500"))
         assertEquals(BigDecimal("6800"), FuelCalculator.parseThousand("6.800"))
     }
+
+    @Test
+    fun testValidationEdgeCasesForDialogInputs() {
+        // Input kosong / spasi / simbol tidak valid harus null
+        assertEquals(null, FuelCalculator.parseEfficiency(""))
+        assertEquals(null, FuelCalculator.parseEfficiency("   "))
+        assertEquals(null, FuelCalculator.parseEfficiency("."))
+        assertEquals(null, FuelCalculator.parseEfficiency(","))
+        assertEquals(null, FuelCalculator.parseThousand(""))
+        assertEquals(null, FuelCalculator.parseThousand("   "))
+
+        // Nilai nol (0 / 0.0 / 000) harus <= BigDecimal.ZERO agar ditolak validasi dialog
+        val zeroEff = FuelCalculator.parseEfficiency("0")
+        val zeroDecEff = FuelCalculator.parseEfficiency("0.0")
+        val zeroPrice = FuelCalculator.parseThousand("000")
+        org.junit.Assert.assertTrue(zeroEff != null && zeroEff <= BigDecimal.ZERO)
+        org.junit.Assert.assertTrue(zeroDecEff != null && zeroDecEff <= BigDecimal.ZERO)
+        org.junit.Assert.assertTrue(zeroPrice != null && zeroPrice <= BigDecimal.ZERO)
+    }
 }

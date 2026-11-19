@@ -27,6 +27,7 @@ import com.mybbm.app.util.DeviceLocationHelper
 import com.mybbm.app.util.FuelIconResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -149,6 +150,11 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _estimatedDistanceKm = MutableStateFlow<BigDecimal?>(null)
     val estimatedDistanceKm: StateFlow<BigDecimal?> = _estimatedDistanceKm.asStateFlow()
+
+    // Job handles untuk mencegah race condition / overwrite state oleh request lama
+    private var spbuFetchJob: Job? = null
+    private var originResolveJob: Job? = null
+    private var destResolveJob: Job? = null
 
     // Calculation Result
     private val _calculationResult = MutableStateFlow<CalculationResult?>(null)
@@ -282,26 +288,6 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Kamus koordinat kota dan titik penting di Kalimantan Timur
-    private val locationCoordinates = mapOf(
-        "polnes" to LatLng(-0.536500, 117.128500),
-        "politeknik negeri samarinda" to LatLng(-0.536500, 117.128500),
-        "samarinda" to LatLng(-0.502106, 117.153709),
-        "samarinda seberang" to LatLng(-0.525000, 117.123000),
-        "big mall" to LatLng(-0.520556, 117.120556),
-        "jembatan mahakam" to LatLng(-0.518889, 117.128611),
-        "unmul" to LatLng(-0.468889, 117.156111),
-        "universitas mulawarman" to LatLng(-0.468889, 117.156111),
-        "balikpapan" to LatLng(-1.265386, 116.831200),
-        "bsb" to LatLng(-1.278333, 116.858333),
-        "balikpapan superblock" to LatLng(-1.278333, 116.858333),
-        "pantai manggar" to LatLng(-1.218889, 116.981944),
-        "bandara sepinggan" to LatLng(-1.268333, 116.894444),
-        "bontang" to LatLng(0.133333, 117.500000),
-        "tenggarong" to LatLng(-0.416667, 116.983333),
-        "penajam" to LatLng(-1.328333, 116.758333)
-    )
-
     init {
         loadDefaultDatasetsFromSupabase()
         setupLocationSearchFlow()
@@ -400,6 +386,9 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
      * memulai dari awal saat kembali ke beranda.
      */
     fun resetTripForm() {
+        spbuFetchJob?.cancel()
+        originResolveJob?.cancel()
+        destResolveJob?.cancel()
         _origin.value = ""
         _destination.value = ""
         _selectedVehicle.value = null
@@ -418,20 +407,45 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setOrigin(value: String) {
+        val trimmed = value.trim()
+        val changed = _origin.value != value
         _origin.value = value
-        if (value.isBlank()) {
+        originResolveJob?.cancel()
+        if (trimmed.isBlank()) {
             _originCoord.value = null
             _routePoints.value = emptyList()
             _estimatedDistanceKm.value = null
-        } else {
-            _originCoord.value = resolveCoordinate(value, isOrigin = true)
+            return
+        }
+        if (changed) {
+            _originCoord.value = null
+            _routePoints.value = emptyList()
+            _estimatedDistanceKm.value = null
+        }
+        if (_originCoord.value != null) {
             updateRoutePreview()
+            return
+        }
+        val cachedSnapshot = _searchResults.value
+        originResolveJob = viewModelScope.launch {
+            val resolved = resolveCoordinateSmart(
+                query = trimmed,
+                existingCoord = null,
+                isOrigin = true,
+                cachedResults = cachedSnapshot
+            )
+            if (_origin.value.trim() == trimmed) {
+                _originCoord.value = resolved
+                updateRoutePreview()
+            }
         }
     }
 
     fun setOriginText(value: String) {
+        val changed = _origin.value != value
         _origin.value = value
-        if (value.isBlank()) {
+        if (value.isBlank() || changed) {
+            originResolveJob?.cancel()
             _originCoord.value = null
             _routePoints.value = emptyList()
             _estimatedDistanceKm.value = null
@@ -444,6 +458,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
      * otomatis memanggil kalkulasi rute OSRM untuk mendapatkan jarak (km).
      */
     fun selectOriginResult(result: LocationSearchResult) {
+        originResolveJob?.cancel()
         _origin.value = result.title
         _originCoord.value = LatLng(result.lat, result.lon)
         clearSearchResults()
@@ -454,6 +469,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
      * Memilih lokasi asal secara eksplisit dengan nama dan koordinat.
      */
     fun selectOrigin(name: String, coord: LatLng) {
+        originResolveJob?.cancel()
         _origin.value = name
         _originCoord.value = coord
         clearSearchResults()
@@ -461,20 +477,45 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setDestination(value: String) {
+        val trimmed = value.trim()
+        val changed = _destination.value != value
         _destination.value = value
-        if (value.isBlank()) {
+        destResolveJob?.cancel()
+        if (trimmed.isBlank()) {
             _destinationCoord.value = null
             _routePoints.value = emptyList()
             _estimatedDistanceKm.value = null
-        } else {
-            _destinationCoord.value = resolveCoordinate(value, isOrigin = false)
+            return
+        }
+        if (changed) {
+            _destinationCoord.value = null
+            _routePoints.value = emptyList()
+            _estimatedDistanceKm.value = null
+        }
+        if (_destinationCoord.value != null) {
             updateRoutePreview()
+            return
+        }
+        val cachedSnapshot = _searchResults.value
+        destResolveJob = viewModelScope.launch {
+            val resolved = resolveCoordinateSmart(
+                query = trimmed,
+                existingCoord = null,
+                isOrigin = false,
+                cachedResults = cachedSnapshot
+            )
+            if (_destination.value.trim() == trimmed) {
+                _destinationCoord.value = resolved
+                updateRoutePreview()
+            }
         }
     }
 
     fun setDestinationText(value: String) {
+        val changed = _destination.value != value
         _destination.value = value
-        if (value.isBlank()) {
+        if (value.isBlank() || changed) {
+            destResolveJob?.cancel()
             _destinationCoord.value = null
             _routePoints.value = emptyList()
             _estimatedDistanceKm.value = null
@@ -487,6 +528,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
      * otomatis memanggil kalkulasi rute OSRM untuk mendapatkan jarak (km).
      */
     fun selectDestinationResult(result: LocationSearchResult) {
+        destResolveJob?.cancel()
         _destination.value = result.title
         _destinationCoord.value = LatLng(result.lat, result.lon)
         clearSearchResults()
@@ -497,6 +539,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
      * Memilih lokasi tujuan secara eksplisit dengan nama dan koordinat.
      */
     fun selectDestination(name: String, coord: LatLng) {
+        destResolveJob?.cancel()
         _destination.value = name
         _destinationCoord.value = coord
         clearSearchResults()
@@ -645,53 +688,18 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         _toastMessage.value = null
     }
 
-    private fun resolveCoordinate(input: String, isOrigin: Boolean): LatLng {
-        val clean = input.trim().lowercase(Locale.ROOT)
-        for ((key, coord) in locationCoordinates) {
-            if (clean.contains(key)) {
-                return coord
-            }
-        }
-        return if (isOrigin) {
-            LatLng(-0.502106, 117.153709) // Default: Samarinda / Polnes
-        } else {
-            LatLng(-1.265386, 116.831200) // Default: Balikpapan
-        }
-    }
-
     private suspend fun resolveCoordinateSmart(
         query: String,
         existingCoord: LatLng?,
-        isOrigin: Boolean
-    ): LatLng {
-        if (existingCoord != null) return existingCoord
-
-        val trimmed = query.trim()
-        if (trimmed.isNotEmpty()) {
-            // 1. Cocokkan terlebih dahulu dengan hasil pencarian autocomplete terakhir
-            val cachedMatch = _searchResults.value.firstOrNull { item ->
-                item.title.equals(trimmed, ignoreCase = true) ||
-                    item.name.equals(trimmed, ignoreCase = true) ||
-                    item.displayName.contains(trimmed, ignoreCase = true)
-            }
-            if (cachedMatch != null) {
-                return LatLng(cachedMatch.lat, cachedMatch.lon)
-            }
-
-            // 2. Auto-resolve via LocationRepository (Nominatim online / KNOWN_LANDMARKS offline)
-            val searched = try {
-                locationRepository.searchLocation(trimmed).firstOrNull()
-            } catch (_: Exception) {
-                null
-            }
-            if (searched != null) {
-                return LatLng(searched.lat, searched.lon)
-            }
-        }
-
-        // 3. Fallback ke kamus koordinat statis Kalimantan Timur
-        return resolveCoordinate(trimmed, isOrigin = isOrigin)
-    }
+        isOrigin: Boolean,
+        cachedResults: List<LocationSearchResult> = _searchResults.value
+    ): LatLng = resolveCoordinateSmart(
+        query = query,
+        existingCoord = existingCoord,
+        isOrigin = isOrigin,
+        cachedResults = cachedResults,
+        searchLocations = { locationRepository.searchLocation(it) }
+    )
 
     /**
      * Menjalankan kalkulasi rute via OSRM API dan menghitung estimasi biaya BBM.
@@ -705,10 +713,16 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         val destQuery = _destination.value
         val existingOriginCoord = _originCoord.value
         val existingDestCoord = _destinationCoord.value
+        val cachedSnapshot = _searchResults.value
+
+        originResolveJob?.cancel()
+        destResolveJob?.cancel()
+        spbuFetchJob?.cancel()
+        _calculationResult.value = null
 
         viewModelScope.launch {
-            val originCoord = resolveCoordinateSmart(originQuery, existingOriginCoord, isOrigin = true)
-            val destCoord = resolveCoordinateSmart(destQuery, existingDestCoord, isOrigin = false)
+            val originCoord = resolveCoordinateSmart(originQuery, existingOriginCoord, isOrigin = true, cachedResults = cachedSnapshot)
+            val destCoord = resolveCoordinateSmart(destQuery, existingDestCoord, isOrigin = false, cachedResults = cachedSnapshot)
             _originCoord.value = originCoord
             _destinationCoord.value = destCoord
 
@@ -733,7 +747,8 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
                 totalCost = output.totalCost,
                 routePoints = output.polylinePoints,
                 nearbySpbu = emptyList(),
-                isFallback = output.isFallback
+                isFallback = output.isFallback,
+                isLoadingSpbu = true
             )
             _calculationResult.value = result
 
@@ -758,9 +773,18 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
             navigateTo(AppScreen.RESULT)
 
             // Mengambil daftar SPBU terdekat di sepanjang rute menggunakan SpbuRepository
-            viewModelScope.launch(Dispatchers.IO) {
-                val realSpbuList = spbuRepository.getSpbuAlongRoute(output.polylinePoints)
-                _calculationResult.value = _calculationResult.value?.copy(nearbySpbu = realSpbuList)
+            spbuFetchJob = viewModelScope.launch(Dispatchers.IO) {
+                val realSpbuList = try {
+                    spbuRepository.getSpbuAlongRoute(output.polylinePoints)
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                if (_calculationResult.value === result) {
+                    _calculationResult.value = result.copy(
+                        nearbySpbu = realSpbuList,
+                        isLoadingSpbu = false
+                    )
+                }
             }
         }
     }
@@ -770,6 +794,10 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
      * secara langsung di Result Screen.
      */
     fun selectHistoryItem(item: HistoryModel) {
+        originResolveJob?.cancel()
+        destResolveJob?.cancel()
+        spbuFetchJob?.cancel()
+
         _origin.value = item.origin
         _destination.value = item.destination
 
@@ -817,14 +845,24 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
                 totalCost = item.totalCost,
                 routePoints = routePts,
                 nearbySpbu = emptyList(),
-                isFallback = route?.isFallback ?: true
+                isFallback = route?.isFallback ?: true,
+                isLoadingSpbu = true
             )
             _calculationResult.value = result
             navigateTo(AppScreen.RESULT)
 
-            viewModelScope.launch(Dispatchers.IO) {
-                val realSpbuList = spbuRepository.getSpbuAlongRoute(routePts)
-                _calculationResult.value = _calculationResult.value?.copy(nearbySpbu = realSpbuList)
+            spbuFetchJob = viewModelScope.launch(Dispatchers.IO) {
+                val realSpbuList = try {
+                    spbuRepository.getSpbuAlongRoute(routePts)
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                if (_calculationResult.value === result) {
+                    _calculationResult.value = result.copy(
+                        nearbySpbu = realSpbuList,
+                        isLoadingSpbu = false
+                    )
+                }
             }
         }
     }
@@ -846,16 +884,27 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateVehicle(id: String, name: String, type: String, efficiency: BigDecimal) {
+        if (id.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
-            val existing = vehicles.value.find { it.id == id }
+            val formattedName = name.uppercase().trim()
             val entity = KendaraanKustomEntity(
                 id = id,
-                nama = name.uppercase().trim(),
+                nama = formattedName,
                 tipe = type,
                 rasioKonsumsi = efficiency.toDouble(),
-                isDefault = existing?.isDefault ?: false
+                // Tandai sebagai data edit lokal pengguna agar tidak tertimpa saat sync Supabase
+                isDefault = false
             )
             kendaraanKustomDao.insertKendaraan(entity)
+            if (_selectedVehicle.value?.id == id) {
+                _selectedVehicle.value = VehicleModel(
+                    id = id,
+                    name = formattedName,
+                    type = type,
+                    fuelEfficiency = efficiency,
+                    isDefault = false
+                )
+            }
             _toastMessage.value = "Berhasil disimpan!"
             showEditVehicleDialog.value = false
         }
@@ -864,6 +913,9 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteVehicle(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
             kendaraanKustomDao.deleteKendaraanById(id)
+            if (_selectedVehicle.value?.id == id) {
+                _selectedVehicle.value = null
+            }
             _toastMessage.value = "Berhasil dihapus!"
             showDeleteVehicleDialog.value = false
         }
@@ -886,17 +938,31 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateFuel(id: String, name: String, price: BigDecimal) {
+        if (id.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
             val existing = fuels.value.find { it.id == id }
+            val formattedName = name.uppercase().trim()
+            val iconRes = FuelIconResolver.resolveIcon(formattedName)
             val entity = BbmKustomEntity(
                 id = id,
-                nama = name.uppercase().trim(),
+                nama = formattedName,
                 harga = price.toDouble(),
-                iconResId = FuelIconResolver.resolveIcon(name),
+                iconResId = iconRes,
                 warnaHex = existing?.colorHex,
-                isDefault = existing?.isDefault ?: false
+                // Tandai sebagai data edit lokal pengguna agar tidak tertimpa saat sync Supabase
+                isDefault = false
             )
             bbmKustomDao.insertBbm(entity)
+            if (_selectedFuel.value?.id == id) {
+                _selectedFuel.value = FuelModel(
+                    id = id,
+                    name = formattedName,
+                    pricePerLiter = price,
+                    iconResId = iconRes,
+                    colorHex = existing?.colorHex,
+                    isDefault = false
+                )
+            }
             _toastMessage.value = "Berhasil disimpan!"
             showEditFuelDialog.value = false
         }
@@ -905,6 +971,9 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteFuel(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
             bbmKustomDao.deleteBbmById(id)
+            if (_selectedFuel.value?.id == id) {
+                _selectedFuel.value = null
+            }
             _toastMessage.value = "Berhasil dihapus!"
             showDeleteFuelDialog.value = false
         }
@@ -924,6 +993,81 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
             riwayatDao.deleteAllRiwayat()
             _toastMessage.value = "Semua riwayat berhasil dihapus!"
             showDeleteAllHistoryDialog.value = false
+        }
+    }
+
+    companion object {
+        // Kamus koordinat kota dan titik penting di Kalimantan Timur
+        private val locationCoordinates = mapOf(
+            "polnes" to LatLng(-0.536500, 117.128500),
+            "politeknik negeri samarinda" to LatLng(-0.536500, 117.128500),
+            "samarinda" to LatLng(-0.502106, 117.153709),
+            "samarinda seberang" to LatLng(-0.525000, 117.123000),
+            "big mall" to LatLng(-0.520556, 117.120556),
+            "jembatan mahakam" to LatLng(-0.518889, 117.128611),
+            "unmul" to LatLng(-0.468889, 117.156111),
+            "universitas mulawarman" to LatLng(-0.468889, 117.156111),
+            "balikpapan" to LatLng(-1.265386, 116.831200),
+            "bsb" to LatLng(-1.278333, 116.858333),
+            "balikpapan superblock" to LatLng(-1.278333, 116.858333),
+            "pantai manggar" to LatLng(-1.218889, 116.981944),
+            "bandara sepinggan" to LatLng(-1.268333, 116.894444),
+            "bontang" to LatLng(0.133333, 117.500000),
+            "tenggarong" to LatLng(-0.416667, 116.983333),
+            "penajam" to LatLng(-1.328333, 116.758333)
+        )
+
+        internal fun resolveStaticCoordinate(input: String, isOrigin: Boolean): LatLng {
+            val clean = input.trim().lowercase(Locale.ROOT)
+            for ((key, coord) in locationCoordinates) {
+                if (clean.contains(key)) {
+                    return coord
+                }
+            }
+            return if (isOrigin) {
+                LatLng(-0.502106, 117.153709) // Default: Samarinda / Polnes
+            } else {
+                LatLng(-1.265386, 116.831200) // Default: Balikpapan
+            }
+        }
+
+        internal suspend fun resolveCoordinateSmart(
+            query: String,
+            existingCoord: LatLng?,
+            isOrigin: Boolean,
+            cachedResults: List<LocationSearchResult>,
+            searchLocations: suspend (String) -> List<LocationSearchResult>
+        ): LatLng {
+            if (existingCoord != null) return existingCoord
+
+            val trimmed = query.trim()
+            if (trimmed.isNotEmpty()) {
+                // 1. Cocokkan terlebih dahulu dengan hasil pencarian autocomplete terakhir (exact lalu substring)
+                val cachedMatch = cachedResults.firstOrNull { item ->
+                    item.title.equals(trimmed, ignoreCase = true) ||
+                        item.name.equals(trimmed, ignoreCase = true)
+                } ?: cachedResults.firstOrNull { item ->
+                    item.title.contains(trimmed, ignoreCase = true) ||
+                        item.name.contains(trimmed, ignoreCase = true) ||
+                        item.displayName.contains(trimmed, ignoreCase = true)
+                }
+                if (cachedMatch != null) {
+                    return LatLng(cachedMatch.lat, cachedMatch.lon)
+                }
+
+                // 2. Auto-resolve via LocationRepository (Nominatim online / KNOWN_LANDMARKS offline)
+                val searched = try {
+                    searchLocations(trimmed).firstOrNull()
+                } catch (_: Exception) {
+                    null
+                }
+                if (searched != null) {
+                    return LatLng(searched.lat, searched.lon)
+                }
+            }
+
+            // 3. Fallback ke kamus koordinat statis Kalimantan Timur
+            return resolveStaticCoordinate(trimmed, isOrigin = isOrigin)
         }
     }
 }

@@ -160,7 +160,7 @@ fun AddVehicleDialog(
                 },
                 placeholder = "Konsumsi BBM km/L (misal 15.0)",
                 heightDp = 38.dp,
-                keyboardType = KeyboardType.Number
+                keyboardType = KeyboardType.Decimal
             )
 
             if (errorMessage != null) {
@@ -189,7 +189,8 @@ fun AddVehicleDialog(
                         .shadow(
                             elevation = 2.2.dp,
                             spotColor = Color(0x40000000),
-                            ambientColor = Color(0x40000000)
+                            ambientColor = Color(0x40000000),
+                            shape = RoundedCornerShape(16.dp)
                         )
                         .width(120.dp)
                         .height(38.dp)
@@ -227,7 +228,8 @@ fun AddVehicleDialog(
                         .shadow(
                             elevation = 2.2.dp,
                             spotColor = Color(0x40000000),
-                            ambientColor = Color(0x40000000)
+                            ambientColor = Color(0x40000000),
+                            shape = RoundedCornerShape(16.dp)
                         )
                         .width(120.dp)
                         .height(38.dp)

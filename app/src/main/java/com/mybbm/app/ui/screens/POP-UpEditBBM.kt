@@ -168,11 +168,11 @@ fun EditBbmDialog(
                         .clickable {
                             val trimmedName = nameInput.trim()
                             val price = FuelCalculator.parseThousand(priceInput)
+                            val id = fuel?.id?.takeIf { it.isNotBlank() }
                             if (trimmedName.isEmpty() || price == null || price <= BigDecimal.ZERO) {
                                 errorMessage = "Harap isi nama dan nilai angka yang valid"
-                            } else {
+                            } else if (id != null) {
                                 errorMessage = null
-                                val id = fuel?.id ?: ""
                                 onSimpanClick(id, trimmedName, price)
                             }
                         },
