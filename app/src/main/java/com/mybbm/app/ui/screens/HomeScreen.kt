@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,6 +95,7 @@ fun rememberBottomSheetState(initialExpanded: Boolean = false): BottomSheetState
     return remember { BottomSheetState(initialExpanded) }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
     viewModel: BbmViewModel,
@@ -340,9 +342,10 @@ fun HomeScreen(
         }
     }
 
-    // Animasi tinggi BottomSheet (0.44f saat compact, 0.92f saat auto-expand)
+    val isImeVisible = WindowInsets.isImeVisible
+    // Animasi tinggi BottomSheet (0.44f saat compact, 0.92f saat auto-expand atau keyboard terbuka)
     val sheetHeightFraction by animateFloatAsState(
-        targetValue = if (bottomSheetState.isExpanded || activeMode != ActiveInputMode.NONE) 0.92f else 0.44f,
+        targetValue = if (bottomSheetState.isExpanded || activeMode != ActiveInputMode.NONE || isImeVisible) 0.92f else 0.44f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioLowBouncy,
             stiffness = Spring.StiffnessMediumLow
@@ -550,10 +553,13 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 2. Keempat TextField dalam urutan Column utama
+            // 2. Keempat TextField dalam urutan Column utama (Scrollable agar ramah keyboard virtual)
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
             ) {
                 // 1. Lokasi Awal
                 EditableInputField(
@@ -871,7 +877,7 @@ fun HomeScreen(
                                 )
                             }
                             HorizontalDivider(
-                                color = Color.Black,
+                                color = Color(0xFFE2E0FA),
                                 thickness = 1.dp,
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -909,14 +915,49 @@ fun HomeScreen(
                                 ActiveInputMode.NONE -> ""
                             }
                             if (activeMode != ActiveInputMode.NONE && filteredSuggestions.isEmpty() && currentActiveQuery.trim().length >= 2) {
-                                Text(
-                                    text = "Tidak ada hasil yang cocok.",
-                                    style = TextStyle(
-                                        fontSize = 13.sp,
-                                        color = Color(0xFF303B65)
-                                    ),
-                                    modifier = Modifier.padding(16.dp)
-                                )
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp, horizontal = 12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "Tidak ada lokasi ditemukan untuk \"$currentActiveQuery\".",
+                                        style = TextStyle(
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color(0xFF303B65),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    )
+                                    if (activeMode == ActiveInputMode.ORIGIN || activeMode == ActiveInputMode.DESTINATION) {
+                                        Button(
+                                            onClick = {
+                                                val pickMode = if (activeMode == ActiveInputMode.ORIGIN) MapPickMode.ORIGIN else MapPickMode.DESTINATION
+                                                focusManager.clearFocus()
+                                                viewModel.startPickingLocation(pickMode)
+                                                activeMode = ActiveInputMode.NONE
+                                                coroutineScope.launch { bottomSheetState.collapse() }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7542EF)),
+                                            shape = RoundedCornerShape(16.dp),
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.LocationOn,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Pilih Lokasi dari Peta",
+                                                style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -1043,7 +1084,7 @@ fun HomeScreen(
                                 }
                             }
                             HorizontalDivider(
-                                color = Color.Black,
+                                color = Color(0xFFE2E0FA),
                                 thickness = 1.dp,
                                 modifier = Modifier.fillMaxWidth()
                             )
