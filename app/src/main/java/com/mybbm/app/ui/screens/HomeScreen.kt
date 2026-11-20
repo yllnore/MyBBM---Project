@@ -1,6 +1,8 @@
 package com.mybbm.app.ui.screens
 
 import android.Manifest
+import android.content.Intent
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -361,30 +363,54 @@ fun HomeScreen(
     var mapCameraTrigger by remember { mutableLongStateOf(0L) }
     var isLocatingUser by remember { mutableStateOf(false) }
     var pendingLocationAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showEnableLocationDialog by remember { mutableStateOf(false) }
+    var pendingGpsRetryAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    val locationSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        val retry = pendingGpsRetryAction
+        pendingGpsRetryAction = null
+        if (retry != null && DeviceLocationHelper.isLocationEnabled(context)) {
+            retry.invoke()
+        }
+    }
 
     // Helper aksi gunakan lokasi saat ini untuk kolom asal di bottom sheet
+    val executeUseCurrentLocationForOrigin: () -> Unit = {
+        viewModel.useCurrentLocation(
+            context = context,
+            onLocationResolved = { name, latLng ->
+                userLocationCoord = latLng
+                triggerTypingAnimation(name)
+                coroutineScope.launch {
+                    bottomSheetState.expand()
+                }
+                if (destinationQuery.isBlank() && destination.isBlank()) {
+                    activeMode = ActiveInputMode.DESTINATION
+                    viewModel.clearSearchResults()
+                    coroutineScope.launch {
+                        delay(name.length * 25L + 100L)
+                        destinationFocusRequester.requestFocus()
+                    }
+                } else {
+                    activeMode = ActiveInputMode.VEHICLE
+                    viewModel.filterVehicles("")
+                    coroutineScope.launch {
+                        delay(name.length * 25L + 100L)
+                        vehicleFocusRequester.requestFocus()
+                    }
+                }
+            }
+        )
+    }
+
     val handleUseCurrentLocationForOrigin: () -> Unit = {
-        viewModel.useCurrentLocation(context) { name, latLng ->
-            userLocationCoord = latLng
-            triggerTypingAnimation(name)
-            coroutineScope.launch {
-                bottomSheetState.expand()
-            }
-            if (destinationQuery.isBlank() && destination.isBlank()) {
-                activeMode = ActiveInputMode.DESTINATION
-                viewModel.clearSearchResults()
-                coroutineScope.launch {
-                    delay(name.length * 25L + 100L)
-                    destinationFocusRequester.requestFocus()
-                }
-            } else {
-                activeMode = ActiveInputMode.VEHICLE
-                viewModel.filterVehicles("")
-                coroutineScope.launch {
-                    delay(name.length * 25L + 100L)
-                    vehicleFocusRequester.requestFocus()
-                }
-            }
+        if (!DeviceLocationHelper.isLocationEnabled(context)) {
+            pendingGpsRetryAction = executeUseCurrentLocationForOrigin
+            showEnableLocationDialog = true
+        } else {
+            executeUseCurrentLocationForOrigin()
         }
     }
 
@@ -396,9 +422,9 @@ fun HomeScreen(
                         permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         if (isGranted) {
             val pending = pendingLocationAction
+            pendingLocationAction = null
             if (pending != null) {
                 pending.invoke()
-                pendingLocationAction = null
             } else {
                 handleUseCurrentLocationForOrigin()
             }
@@ -409,54 +435,52 @@ fun HomeScreen(
     }
 
     // Aksi memusatkan peta ke lokasi pengguna saat ini (GPS)
-    val centerMapToCurrentLocation: () -> Unit = {
+    val executeCenterMapToCurrentLocation: () -> Unit = {
         coroutineScope.launch {
             if (isLocatingUser) return@launch
             isLocatingUser = true
             try {
-                if (DeviceLocationHelper.hasLocationPermission(context)) {
-                    // Tutup keyboard dan persempit panel agar pengguna melihat peta secara leluasa
-                    focusManager.clearFocus()
-                    activeMode = ActiveInputMode.NONE
-                    bottomSheetState.collapse()
+                // Tutup keyboard dan persempit panel agar pengguna melihat peta secara leluasa
+                focusManager.clearFocus()
+                activeMode = ActiveInputMode.NONE
+                bottomSheetState.collapse()
 
-                    val loc = DeviceLocationHelper.getCurrentLocation(context)
-                    if (loc != null) {
-                        userLocationCoord = loc
-                        mapCameraTarget = loc
-                        mapCameraTrigger = System.currentTimeMillis()
-                        viewModel.showToast("Peta dipusatkan ke lokasi Anda")
-                    } else {
-                        viewModel.showToast("Tidak dapat mendeteksi lokasi GPS. Pastikan GPS aktif.")
-                    }
+                val loc = DeviceLocationHelper.getCurrentLocation(context)
+                if (loc != null) {
+                    userLocationCoord = loc
+                    mapCameraTarget = loc
+                    mapCameraTrigger = System.currentTimeMillis()
+                    viewModel.showToast("Peta dipusatkan ke lokasi Anda")
                 } else {
-                    pendingLocationAction = {
-                        coroutineScope.launch {
-                            focusManager.clearFocus()
-                            activeMode = ActiveInputMode.NONE
-                            bottomSheetState.collapse()
-
-                            val loc = DeviceLocationHelper.getCurrentLocation(context)
-                            if (loc != null) {
-                                userLocationCoord = loc
-                                mapCameraTarget = loc
-                                mapCameraTrigger = System.currentTimeMillis()
-                                viewModel.showToast("Peta dipusatkan ke lokasi Anda")
-                            } else {
-                                viewModel.showToast("Tidak dapat mendeteksi lokasi GPS. Pastikan GPS aktif.")
-                            }
-                        }
-                    }
-                    locationPermissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        )
-                    )
+                    viewModel.showToast("Tidak dapat mendeteksi lokasi GPS. Pastikan sinyal GPS tersedia.")
                 }
             } finally {
                 isLocatingUser = false
             }
+        }
+    }
+
+    val centerMapToCurrentLocation: () -> Unit = {
+        if (!DeviceLocationHelper.hasLocationPermission(context)) {
+            pendingLocationAction = {
+                if (!DeviceLocationHelper.isLocationEnabled(context)) {
+                    pendingGpsRetryAction = executeCenterMapToCurrentLocation
+                    showEnableLocationDialog = true
+                } else {
+                    executeCenterMapToCurrentLocation()
+                }
+            }
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        } else if (!DeviceLocationHelper.isLocationEnabled(context)) {
+            pendingGpsRetryAction = executeCenterMapToCurrentLocation
+            showEnableLocationDialog = true
+        } else {
+            executeCenterMapToCurrentLocation()
         }
     }
 
@@ -1392,6 +1416,52 @@ fun HomeScreen(
             }
 
             Spacer(modifier = Modifier.height(6.dp))
+        }
+
+        if (showEnableLocationDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showEnableLocationDialog = false
+                    pendingGpsRetryAction = null
+                },
+                containerColor = Color(0xFFF3F1FF),
+                title = {
+                    Text(
+                        text = "GPS / Lokasi Belum Aktif",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF090F59)
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Fitur lokasi (GPS) di HP Anda sedang mati. Aktifkan lokasi terlebih dahulu untuk mendeteksi posisi Anda saat ini.",
+                        color = Color(0xFF303B65)
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showEnableLocationDialog = false
+                            locationSettingsLauncher.launch(
+                                Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7542EF))
+                    ) {
+                        Text("Buka Pengaturan", color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showEnableLocationDialog = false
+                            pendingGpsRetryAction = null
+                        }
+                    ) {
+                        Text("Batal", color = Color(0xFF303B65))
+                    }
+                }
+            )
         }
     }
 }

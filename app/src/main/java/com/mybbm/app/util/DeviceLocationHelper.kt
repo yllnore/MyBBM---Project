@@ -10,6 +10,7 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
 import com.mybbm.app.domain.model.LatLng
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
@@ -33,6 +34,15 @@ object DeviceLocationHelper {
         ) == PackageManager.PERMISSION_GRANTED
 
         return fineLocation || coarseLocation
+    }
+
+    fun isLocationEnabled(context: Context): Boolean {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return false
+        return try {
+            LocationManagerCompat.isLocationEnabled(locationManager)
+        } catch (_: Exception) {
+            false
+        }
     }
 
     @SuppressLint("MissingPermission")

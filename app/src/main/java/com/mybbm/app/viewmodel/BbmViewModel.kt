@@ -554,7 +554,11 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
      * Mengambil koordinat GPS fisik pengguna saat ini dan melakukan
      * reverse geocoding via OpenStreetMap Nominatim untuk mendapatkan nama jalan/wilayah riil.
      */
-    fun useCurrentLocation(context: Context, onLocationResolved: (String, LatLng) -> Unit = { _, _ -> }) {
+    fun useCurrentLocation(
+        context: Context,
+        onLocationResolved: (String, LatLng) -> Unit = { _, _ -> },
+        onLocationFailed: (String) -> Unit = {}
+    ) {
         viewModelScope.launch {
             _isDetectingLocation.value = true
             try {
@@ -569,21 +573,14 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
                     checkAndCalculateOsrmRoute()
                     onLocationResolved(locationTitle, latLng)
                 } else {
-                    val fallbackCoord = LatLng(-0.502106, 117.153709)
-                    val fallbackTitle = "POLNES - Samarinda"
-                    _origin.value = fallbackTitle
-                    _originCoord.value = fallbackCoord
-                    clearSearchResults()
-                    checkAndCalculateOsrmRoute()
-                    onLocationResolved(fallbackTitle, fallbackCoord)
+                    val msg = "Tidak dapat mendeteksi lokasi GPS. Pastikan GPS aktif dan sinyal tersedia."
+                    showToast(msg)
+                    onLocationFailed(msg)
                 }
             } catch (e: Exception) {
-                val fallbackCoord = LatLng(-0.502106, 117.153709)
-                val fallbackTitle = "POLNES - Samarinda"
-                _origin.value = fallbackTitle
-                _originCoord.value = fallbackCoord
-                clearSearchResults()
-                onLocationResolved(fallbackTitle, fallbackCoord)
+                val msg = "Gagal mendeteksi lokasi saat ini."
+                showToast(msg)
+                onLocationFailed(msg)
             } finally {
                 _isDetectingLocation.value = false
             }
