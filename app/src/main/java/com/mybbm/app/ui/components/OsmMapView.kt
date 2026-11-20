@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mybbm.app.R
 import com.mybbm.app.domain.model.LatLng
 import org.osmdroid.config.Configuration
+import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
@@ -30,6 +31,7 @@ import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 
@@ -134,7 +136,8 @@ fun OsmMapView(
     cameraZoom: Double = 16.5,
     cameraTrigger: Long = 0L,
     routePoints: List<LatLng> = emptyList(),
-    spbuCoordinates: List<LatLng> = emptyList()
+    spbuCoordinates: List<LatLng> = emptyList(),
+    onMapTap: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -226,6 +229,8 @@ fun OsmMapView(
     val userLocationIcon = remember(context) { createUserLocationDrawable(context) }
     val spbuMarkerIcon = remember(context) { createSpbuMarkerDrawable(context) }
 
+    val currentOnMapTap by rememberUpdatedState(onMapTap)
+
     // Perbarui overlay (marker & polyline ungu #7542EF) ketika data berubah
     AndroidView(
         modifier = modifier.fillMaxSize(),
@@ -235,6 +240,17 @@ fun OsmMapView(
             val shouldAutoFit = (savedCameraCenter == null && currentRouteKey != autoFittedRouteKey) && (originCoordinate != null || destinationCoordinate != null)
 
             map.overlays.clear()
+
+            if (currentOnMapTap != null) {
+                map.overlays.add(MapEventsOverlay(object : MapEventsReceiver {
+                    override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
+                        currentOnMapTap?.invoke()
+                        return false
+                    }
+
+                    override fun longPressHelper(p: GeoPoint?): Boolean = false
+                }))
+            }
 
             // 1. Gambar Garis Rute (Polyline Halus Warna Ungu #7542EF)
             // HANYA MUNCUL KETIKA SUDAH HITUNG BIAYA / RUTE ADA (routePoints tidak kosong)

@@ -1,6 +1,7 @@
 package com.mybbm.app.ui.screens
 
 import android.Manifest
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -37,10 +38,16 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -50,6 +57,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
@@ -95,6 +103,24 @@ fun rememberBottomSheetState(initialExpanded: Boolean = false): BottomSheetState
     return remember { BottomSheetState(initialExpanded) }
 }
 
+/**
+ * Menentukan apakah BottomSheet harus tetap expanded atau collapse setelah pengguna selesai menggeser (drag/fling).
+ */
+internal fun resolveBottomSheetExpansionAfterDrag(
+    currentlyExpanded: Boolean,
+    cumulativeDragPx: Float,
+    velocityPxPerSec: Float,
+    thresholdPx: Float,
+    velocityThresholdPxPerSec: Float = 350f
+): Boolean {
+    return if (currentlyExpanded) {
+        val shouldCollapse = cumulativeDragPx > thresholdPx || velocityPxPerSec > velocityThresholdPxPerSec
+        !shouldCollapse
+    } else {
+        cumulativeDragPx < -thresholdPx || velocityPxPerSec < -velocityThresholdPxPerSec
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
@@ -127,7 +153,18 @@ fun HomeScreen(
     val bottomSheetState = rememberBottomSheetState()
     val coroutineScope = rememberCoroutineScope()
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val density = LocalDensity.current
     var activeMode by remember { mutableStateOf(ActiveInputMode.NONE) }
+    var dragOffsetPx by remember { mutableFloatStateOf(0f) }
+    // Cegah auto-focus bawaan sistem saat layar pertama kali muncul meng-expand bottom sheet secara tidak sengaja
+    var allowFocusExpand by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        focusManager.clearFocus(force = true)
+        delay(150L)
+        allowFocusExpand = true
+    }
 
     // FocusRequesters untuk kontrol fokus dan kursor otomatis antar field
     val originFocusRequester = remember { FocusRequester() }
@@ -333,19 +370,56 @@ fun HomeScreen(
         }
     }
 
-    // Reset posisi BottomSheet dan saran saat form di-reset ke awal (misal saat kembali ke beranda)
-    LaunchedEffect(origin, destination, selectedVehicle, selectedFuel) {
-        if (origin.isBlank() && destination.isBlank() && selectedVehicle == null && selectedFuel == null) {
-            activeMode = ActiveInputMode.NONE
+    val isImeVisible = WindowInsets.isImeVisible
+    val isSheetExpanded = bottomSheetState.isExpanded || activeMode != ActiveInputMode.NONE || isImeVisible
+
+    val collapseBottomSheet: () -> Unit = {
+        dragOffsetPx = 0f
+        activeMode = ActiveInputMode.NONE
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+        viewModel.clearSearchResults()
+        coroutineScope.launch {
             bottomSheetState.collapse()
-            viewModel.clearSearchResults()
         }
     }
 
-    val isImeVisible = WindowInsets.isImeVisible
-    // Animasi tinggi BottomSheet (0.44f saat compact, 0.92f saat auto-expand atau keyboard terbuka)
-    val sheetHeightFraction by animateFloatAsState(
-        targetValue = if (bottomSheetState.isExpanded || activeMode != ActiveInputMode.NONE || isImeVisible) 0.92f else 0.44f,
+    val expandBottomSheetDefault: () -> Unit = {
+        dragOffsetPx = 0f
+        allowFocusExpand = true
+        coroutineScope.launch {
+            bottomSheetState.expand()
+            if (activeMode == ActiveInputMode.NONE) {
+                activeMode = when {
+                    originQuery.isBlank() -> ActiveInputMode.ORIGIN
+                    destinationQuery.isBlank() -> ActiveInputMode.DESTINATION
+                    vehicleQuery.isBlank() -> ActiveInputMode.VEHICLE
+                    fuelQuery.isBlank() -> ActiveInputMode.FUEL
+                    else -> ActiveInputMode.ORIGIN
+                }
+            }
+        }
+    }
+
+    // Reset posisi BottomSheet dan saran saat form di-reset ke awal (misal saat kembali ke beranda)
+    LaunchedEffect(origin, destination, selectedVehicle, selectedFuel) {
+        if (origin.isBlank() && destination.isBlank() && selectedVehicle == null && selectedFuel == null) {
+            collapseBottomSheet()
+        }
+    }
+
+    // Tombol Back sistem menutup BottomSheet / pick mode sebelum keluar dari aplikasi
+    BackHandler(enabled = isSheetExpanded || mapPickMode != MapPickMode.NONE) {
+        if (mapPickMode != MapPickMode.NONE) {
+            viewModel.cancelPickingLocation()
+        } else {
+            collapseBottomSheet()
+        }
+    }
+
+    // Animasi tinggi BottomSheet (0.44f saat compact, 0.86f saat expanded agar jauh dari status bar/notch)
+    val baseSheetFraction by animateFloatAsState(
+        targetValue = if (isSheetExpanded) 0.86f else 0.44f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioLowBouncy,
             stiffness = Spring.StiffnessMediumLow
@@ -359,21 +433,70 @@ fun HomeScreen(
     ) {
         val configuration = LocalConfiguration.current
         val screenHeightDp = configuration.screenHeightDp.dp
-        val bottomSheetHeightDp = screenHeightDp * sheetHeightFraction
+        val dragOffsetDp = with(density) { dragOffsetPx.toDp() }
+        val bottomSheetHeightDp = (screenHeightDp * baseSheetFraction - dragOffsetDp)
+            .coerceIn(screenHeightDp * 0.40f, screenHeightDp * 0.90f)
+        val dragThresholdPx = with(density) { 44.dp.toPx() }
+        val currentIsSheetExpanded by rememberUpdatedState(isSheetExpanded)
+
+        val finishSheetDrag: (Float) -> Unit = { velocity ->
+            val shouldRemainExpanded = resolveBottomSheetExpansionAfterDrag(
+                currentlyExpanded = currentIsSheetExpanded,
+                cumulativeDragPx = dragOffsetPx,
+                velocityPxPerSec = velocity,
+                thresholdPx = dragThresholdPx
+            )
+            dragOffsetPx = 0f
+            if (shouldRemainExpanded) {
+                expandBottomSheetDefault()
+            } else {
+                collapseBottomSheet()
+            }
+        }
+
+        val sheetNestedScrollConnection = remember(dragThresholdPx) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (source == NestedScrollSource.UserInput && dragOffsetPx > 0f && available.y < 0f) {
+                        val consumed = available.y.coerceAtLeast(-dragOffsetPx)
+                        dragOffsetPx += consumed
+                        return Offset(0f, consumed)
+                    }
+                    return Offset.Zero
+                }
+
+                override fun onPostScroll(
+                    consumed: Offset,
+                    available: Offset,
+                    source: NestedScrollSource
+                ): Offset {
+                    if (source == NestedScrollSource.UserInput) {
+                        if (currentIsSheetExpanded && available.y > 0f) {
+                            dragOffsetPx += available.y
+                            return Offset(0f, available.y)
+                        } else if (!currentIsSheetExpanded && available.y < 0f) {
+                            dragOffsetPx += available.y
+                            return Offset(0f, available.y)
+                        }
+                    }
+                    return Offset.Zero
+                }
+
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    if (dragOffsetPx != 0f) {
+                        finishSheetDrag(available.y)
+                        return available
+                    }
+                    return Velocity.Zero
+                }
+            }
+        }
 
         // 1. Latar Belakang Peta OSM Interaktif (Tema Terang #E8ECEF / #ECEBFF & Polyline Halus #7542EF)
         OsmMapView(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = bottomSheetHeightDp)
-                .clickable {
-                    // Tap di area peta menutup saran dan meng-collapse panel
-                    coroutineScope.launch {
-                        bottomSheetState.collapse()
-                        activeMode = ActiveInputMode.NONE
-                        viewModel.clearSearchResults()
-                    }
-                },
+                .padding(bottom = bottomSheetHeightDp),
             centerCoordinate = LatLng(-0.5021, 117.1536), // Samarinda (Polnes)
             zoomLevel = 12.5,
             savedCameraCenter = homeMapCenter,
@@ -389,7 +512,12 @@ fun HomeScreen(
             cameraTarget = mapCameraTarget,
             cameraZoom = 16.5,
             cameraTrigger = mapCameraTrigger,
-            routePoints = routePoints
+            routePoints = routePoints,
+            onMapTap = {
+                if (currentIsSheetExpanded) {
+                    collapseBottomSheet()
+                }
+            }
         )
 
         // Tombol Mengambang di Kanan Atas (FABs)
@@ -468,12 +596,12 @@ fun HomeScreen(
             }
         }
 
-        // Panel Input Perjalanan (Draggable & Auto-Expand Bottom Sheet)
+        // Panel Input Perjalanan (Draggable 1:1 & Auto-Expand Bottom Sheet)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .fillMaxHeight(sheetHeightFraction)
+                .height(bottomSheetHeightDp)
                 .shadow(
                     elevation = 24.dp,
                     spotColor = Color(0x40000000),
@@ -484,65 +612,37 @@ fun HomeScreen(
                     color = Color(0xFFC0BEF8), // Lilac warna tema
                     shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
                 )
+                .nestedScroll(sheetNestedScrollConnection)
+                .draggable(
+                    orientation = Orientation.Vertical,
+                    state = rememberDraggableState { delta ->
+                        dragOffsetPx += delta
+                    },
+                    onDragStopped = { velocity ->
+                        finishSheetDrag(velocity)
+                    }
+                )
                 .imePadding() // Menjamin tidak tertutup keyboard layar
-                .padding(horizontal = 20.dp, vertical = 10.dp),
+                .padding(horizontal = 20.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Drag Handle Bar
+            // Drag Handle Bar dengan area sentuh luas (44dp)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(24.dp)
-                    .draggable(
-                        orientation = Orientation.Vertical,
-                        state = rememberDraggableState { delta ->
-                            if (delta < -20f) {
-                                coroutineScope.launch {
-                                    bottomSheetState.expand()
-                                    if (activeMode == ActiveInputMode.NONE) {
-                                        activeMode = when {
-                                            originQuery.isBlank() -> ActiveInputMode.ORIGIN
-                                            destinationQuery.isBlank() -> ActiveInputMode.DESTINATION
-                                            vehicleQuery.isBlank() -> ActiveInputMode.VEHICLE
-                                            fuelQuery.isBlank() -> ActiveInputMode.FUEL
-                                            else -> ActiveInputMode.ORIGIN
-                                        }
-                                    }
-                                }
-                            } else if (delta > 20f) {
-                                coroutineScope.launch {
-                                    bottomSheetState.collapse()
-                                    activeMode = ActiveInputMode.NONE
-                                    viewModel.clearSearchResults()
-                                }
-                            }
-                        }
-                    )
+                    .height(40.dp)
                     .clickable {
-                        coroutineScope.launch {
-                            if (bottomSheetState.isExpanded) {
-                                bottomSheetState.collapse()
-                                activeMode = ActiveInputMode.NONE
-                                viewModel.clearSearchResults()
-                            } else {
-                                bottomSheetState.expand()
-                                if (activeMode == ActiveInputMode.NONE) {
-                                    activeMode = when {
-                                        originQuery.isBlank() -> ActiveInputMode.ORIGIN
-                                        destinationQuery.isBlank() -> ActiveInputMode.DESTINATION
-                                        vehicleQuery.isBlank() -> ActiveInputMode.VEHICLE
-                                        fuelQuery.isBlank() -> ActiveInputMode.FUEL
-                                        else -> ActiveInputMode.ORIGIN
-                                    }
-                                }
-                            }
+                        if (isSheetExpanded) {
+                            collapseBottomSheet()
+                        } else {
+                            expandBottomSheetDefault()
                         }
                     },
                 contentAlignment = Alignment.Center
             ) {
                 Box(
                     modifier = Modifier
-                        .width(42.dp)
+                        .width(46.dp)
                         .height(5.dp)
                         .background(
                             color = Color(0xFF7289D2),
@@ -551,7 +651,7 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // 2. Keempat TextField dalam urutan Column utama (Scrollable agar ramah keyboard virtual)
             Column(
@@ -568,7 +668,9 @@ fun HomeScreen(
                     iconResId = R.drawable.lokasi_awal,
                     isActive = activeMode == ActiveInputMode.ORIGIN,
                     focusRequester = originFocusRequester,
+                    onExplicitTap = { allowFocusExpand = true },
                     onValueChange = {
+                        allowFocusExpand = true
                         originTextFieldValue = it
                         originQuery = it.text
                         activeMode = ActiveInputMode.ORIGIN
@@ -576,13 +678,18 @@ fun HomeScreen(
                         viewModel.searchLocation(it.text)
                     },
                     onFocusChanged = { isFocused ->
-                        if (isFocused && activeMode != ActiveInputMode.ORIGIN) {
-                            coroutineScope.launch { bottomSheetState.expand() }
-                            activeMode = ActiveInputMode.ORIGIN
-                            if (originTextFieldValue.text.trim().length >= 2) {
-                                viewModel.searchLocation(originTextFieldValue.text)
-                            } else {
-                                viewModel.clearSearchResults()
+                        if (isFocused) {
+                            if (!allowFocusExpand) {
+                                focusManager.clearFocus(force = true)
+                            } else if (activeMode != ActiveInputMode.ORIGIN) {
+                                dragOffsetPx = 0f
+                                coroutineScope.launch { bottomSheetState.expand() }
+                                activeMode = ActiveInputMode.ORIGIN
+                                if (originTextFieldValue.text.trim().length >= 2) {
+                                    viewModel.searchLocation(originTextFieldValue.text)
+                                } else {
+                                    viewModel.clearSearchResults()
+                                }
                             }
                         }
                     },
@@ -593,6 +700,7 @@ fun HomeScreen(
                         } else {
                             viewModel.setOrigin("")
                         }
+                        allowFocusExpand = true
                         activeMode = ActiveInputMode.DESTINATION
                         viewModel.clearSearchResults()
                         coroutineScope.launch {
@@ -606,7 +714,7 @@ fun HomeScreen(
                             if (mapPickMode == MapPickMode.ORIGIN) {
                                 viewModel.cancelPickingLocation()
                             } else {
-                                bottomSheetState.collapse()
+                                collapseBottomSheet()
                                 viewModel.startPickingLocation(MapPickMode.ORIGIN)
                             }
                         }
@@ -620,7 +728,9 @@ fun HomeScreen(
                     iconResId = R.drawable.lokasi_tujuan,
                     isActive = activeMode == ActiveInputMode.DESTINATION,
                     focusRequester = destinationFocusRequester,
+                    onExplicitTap = { allowFocusExpand = true },
                     onValueChange = {
+                        allowFocusExpand = true
                         destinationTextFieldValue = it
                         destinationQuery = it.text
                         activeMode = ActiveInputMode.DESTINATION
@@ -628,13 +738,18 @@ fun HomeScreen(
                         viewModel.searchLocation(it.text)
                     },
                     onFocusChanged = { isFocused ->
-                        if (isFocused && activeMode != ActiveInputMode.DESTINATION) {
-                            coroutineScope.launch { bottomSheetState.expand() }
-                            activeMode = ActiveInputMode.DESTINATION
-                            if (destinationTextFieldValue.text.trim().length >= 2) {
-                                viewModel.searchLocation(destinationTextFieldValue.text)
-                            } else {
-                                viewModel.clearSearchResults()
+                        if (isFocused) {
+                            if (!allowFocusExpand) {
+                                focusManager.clearFocus(force = true)
+                            } else if (activeMode != ActiveInputMode.DESTINATION) {
+                                dragOffsetPx = 0f
+                                coroutineScope.launch { bottomSheetState.expand() }
+                                activeMode = ActiveInputMode.DESTINATION
+                                if (destinationTextFieldValue.text.trim().length >= 2) {
+                                    viewModel.searchLocation(destinationTextFieldValue.text)
+                                } else {
+                                    viewModel.clearSearchResults()
+                                }
                             }
                         }
                     },
@@ -645,6 +760,7 @@ fun HomeScreen(
                         } else {
                             viewModel.setDestination("")
                         }
+                        allowFocusExpand = true
                         viewModel.clearSearchResults()
                         activeMode = ActiveInputMode.VEHICLE
                         viewModel.filterVehicles("")
@@ -659,7 +775,7 @@ fun HomeScreen(
                             if (mapPickMode == MapPickMode.DESTINATION) {
                                 viewModel.cancelPickingLocation()
                             } else {
-                                bottomSheetState.collapse()
+                                collapseBottomSheet()
                                 viewModel.startPickingLocation(MapPickMode.DESTINATION)
                             }
                         }
@@ -673,7 +789,9 @@ fun HomeScreen(
                     iconResId = null,
                     isActive = activeMode == ActiveInputMode.VEHICLE,
                     focusRequester = vehicleFocusRequester,
+                    onExplicitTap = { allowFocusExpand = true },
                     onValueChange = {
+                        allowFocusExpand = true
                         vehicleTextFieldValue = it
                         vehicleQuery = it.text
                         viewModel.setVehicleQuery(it.text)
@@ -681,13 +799,19 @@ fun HomeScreen(
                     },
                     onFocusChanged = { isFocused ->
                         if (isFocused) {
-                            coroutineScope.launch { bottomSheetState.expand() }
-                            activeMode = ActiveInputMode.VEHICLE
-                            viewModel.filterVehicles("")
+                            if (!allowFocusExpand) {
+                                focusManager.clearFocus(force = true)
+                            } else {
+                                dragOffsetPx = 0f
+                                coroutineScope.launch { bottomSheetState.expand() }
+                                activeMode = ActiveInputMode.VEHICLE
+                                viewModel.filterVehicles("")
+                            }
                         }
                     },
                     imeAction = ImeAction.Next,
                     onImeAction = {
+                        allowFocusExpand = true
                         activeMode = ActiveInputMode.FUEL
                         viewModel.filterFuels("")
                         coroutineScope.launch {
@@ -705,7 +829,9 @@ fun HomeScreen(
                     iconResId = null,
                     isActive = activeMode == ActiveInputMode.FUEL,
                     focusRequester = fuelFocusRequester,
+                    onExplicitTap = { allowFocusExpand = true },
                     onValueChange = {
+                        allowFocusExpand = true
                         fuelTextFieldValue = it
                         fuelQuery = it.text
                         viewModel.setFuelQuery(it.text)
@@ -713,17 +839,19 @@ fun HomeScreen(
                     },
                     onFocusChanged = { isFocused ->
                         if (isFocused) {
-                            coroutineScope.launch { bottomSheetState.expand() }
-                            activeMode = ActiveInputMode.FUEL
-                            viewModel.filterFuels("")
+                            if (!allowFocusExpand) {
+                                focusManager.clearFocus(force = true)
+                            } else {
+                                dragOffsetPx = 0f
+                                coroutineScope.launch { bottomSheetState.expand() }
+                                activeMode = ActiveInputMode.FUEL
+                                viewModel.filterFuels("")
+                            }
                         }
                     },
                     imeAction = ImeAction.Done,
                     onImeAction = {
-                        activeMode = ActiveInputMode.NONE
-                        focusManager.clearFocus()
-                        viewModel.clearSearchResults()
-                        coroutineScope.launch { bottomSheetState.collapse() }
+                        collapseBottomSheet()
                     }
                 )
             }
@@ -935,10 +1063,8 @@ fun HomeScreen(
                                         Button(
                                             onClick = {
                                                 val pickMode = if (activeMode == ActiveInputMode.ORIGIN) MapPickMode.ORIGIN else MapPickMode.DESTINATION
-                                                focusManager.clearFocus()
+                                                collapseBottomSheet()
                                                 viewModel.startPickingLocation(pickMode)
-                                                activeMode = ActiveInputMode.NONE
-                                                coroutineScope.launch { bottomSheetState.collapse() }
                                             },
                                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7542EF)),
                                             shape = RoundedCornerShape(16.dp),
@@ -1030,10 +1156,7 @@ fun HomeScreen(
                                                 viewModel.selectFuel(item.fuel)
                                                 fuelTextFieldValue = TextFieldValue(item.fuel.name, selection = TextRange(item.fuel.name.length))
                                                 fuelQuery = item.fuel.name
-                                                activeMode = ActiveInputMode.NONE
-                                                focusManager.clearFocus()
-                                                viewModel.clearSearchResults()
-                                                coroutineScope.launch { bottomSheetState.collapse() }
+                                                collapseBottomSheet()
                                             }
                                         }
                                     }
@@ -1109,6 +1232,7 @@ private fun EditableInputField(
     iconResId: Int?,
     isActive: Boolean,
     focusRequester: FocusRequester = remember { FocusRequester() },
+    onExplicitTap: () -> Unit = {},
     onValueChange: (TextFieldValue) -> Unit,
     onFocusChanged: (Boolean) -> Unit,
     imeAction: ImeAction = ImeAction.Default,
@@ -1126,6 +1250,7 @@ private fun EditableInputField(
                 shape = RoundedCornerShape(8.dp)
             )
             .clickable {
+                onExplicitTap()
                 focusRequester.requestFocus()
                 onFocusChanged(true)
             }
