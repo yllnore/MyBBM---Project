@@ -710,31 +710,6 @@ fun HomeScreen(
                     )
                 }
             }
-
-            // Tombol Konfirmasi di atas peek handle bar
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = maxOf(bottomSheetHeightDp, peekSheetHeightDp) + 18.dp, start = 24.dp, end = 24.dp)
-            ) {
-                Button(
-                    onClick = {
-                        val targetCoord = homeMapCenter ?: LatLng(-0.5021, 117.1536)
-                        viewModel.confirmPickedLocationWithReverseGeocode(targetCoord, context)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7542EF)),
-                    shape = RoundedCornerShape(24.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .shadow(8.dp, RoundedCornerShape(24.dp))
-                ) {
-                    Text(
-                        text = "Pilih Lokasi Ini",
-                        style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    )
-                }
-            }
         }
 
         // Tombol Kembali Kiri Atas (Figma 36:236 & 36:200) — hanya muncul saat mode pilih lokasi di peta aktif
