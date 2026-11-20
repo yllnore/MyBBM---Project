@@ -2,9 +2,13 @@ package com.mybbm.app.ui.components
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,26 +17,36 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AddLocationAlt
-import androidx.compose.material.icons.outlined.LocalGasStation
-import androidx.compose.material.icons.outlined.SwapVert
-import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 
 enum class WalkthroughAnchor {
     BOTTOM_SHEET,
@@ -48,29 +62,36 @@ data class WalkthroughStep(
     val anchor: WalkthroughAnchor
 )
 
+data class BubblePlacement(
+    val placeAbove: Boolean,
+    val bubbleLeftPx: Float,
+    val bubbleTopPx: Float,
+    val arrowOffsetInBubblePx: Float
+)
+
 object AppWalkthroughSteps {
     val steps: List<WalkthroughStep> = listOf(
         WalkthroughStep(
-            title = "Geser Panel Sesuai Kebutuhan",
-            description = "Tarik garis di atas panel ke bawah untuk melihat peta layar penuh, atau tarik ke atas untuk mengisi rute dan melihat saran lokasi.",
+            title = "Geser Panel Peta",
+            description = "Tarik garis ini ke bawah untuk melihat peta penuh, atau tarik ke atas untuk mengisi rute.",
             badgeText = "Panel 3-Tahap",
             anchor = WalkthroughAnchor.BOTTOM_SHEET
         ),
         WalkthroughStep(
-            title = "Pilih Lokasi Langsung di Peta",
-            description = "Ketuk ikon pin merah (Lokasi Awal) atau biru (Lokasi Tujuan), geser peta ke titik tujuan, lalu ketuk pin di tengah peta untuk konfirmasi.",
+            title = "Pilih Lokasi dari Peta",
+            description = "Ketuk ikon pin merah atau biru untuk memilih titik lokasi awal & tujuan langsung di peta.",
             badgeText = "Pin Peta Interaktif",
             anchor = WalkthroughAnchor.PIN_ICONS
         ),
         WalkthroughStep(
             title = "Pengaturan, Riwayat & GPS",
-            description = "Gunakan 3 tombol di kanan atas untuk mengelola kendaraan & harga BBM kustom, melihat riwayat perjalanan, atau memusatkan peta ke lokasi GPS Anda.",
-            badgeText = "Akses Cepat Peta",
+            description = "Kelola kendaraan & harga BBM kustom, lihat riwayat perjalanan, atau pusatkan lokasi GPS Anda.",
+            badgeText = "Akses Cepat",
             anchor = WalkthroughAnchor.TOP_RIGHT_FABS
         ),
         WalkthroughStep(
-            title = "Hitung Biaya & SPBU Terdekat",
-            description = "Setelah rute, kendaraan, dan jenis BBM terisi, tekan Hitung Biaya Perjalanan untuk melihat estimasi biaya, liter BBM, rute, dan SPBU terdekat.",
+            title = "Hitung Biaya & SPBU",
+            description = "Tekan tombol ini untuk melihat estimasi biaya BBM, jarak rute, dan SPBU terdekat.",
             badgeText = "Siap Menghitung",
             anchor = WalkthroughAnchor.CALCULATE_BUTTON
         )
@@ -88,22 +109,61 @@ object AppWalkthroughSteps {
     fun isLastStep(currentIndex: Int, totalSteps: Int = steps.size): Boolean {
         return totalSteps > 0 && currentIndex >= totalSteps - 1
     }
-}
 
-private fun iconForAnchor(anchor: WalkthroughAnchor): ImageVector {
-    return when (anchor) {
-        WalkthroughAnchor.BOTTOM_SHEET -> Icons.Outlined.SwapVert
-        WalkthroughAnchor.PIN_ICONS -> Icons.Outlined.AddLocationAlt
-        WalkthroughAnchor.TOP_RIGHT_FABS -> Icons.Outlined.Tune
-        WalkthroughAnchor.CALCULATE_BUTTON -> Icons.Outlined.LocalGasStation
+    fun calculateBubblePlacement(
+        targetRect: Rect,
+        containerWidthPx: Float,
+        containerHeightPx: Float,
+        bubbleWidthPx: Float,
+        bubbleHeightPx: Float,
+        arrowHeightPx: Float,
+        gapPx: Float,
+        horizontalMarginPx: Float,
+        verticalMarginPx: Float,
+        arrowEdgePaddingPx: Float
+    ): BubblePlacement {
+        val totalVerticalOffset = arrowHeightPx + gapPx
+        var placeAbove = targetRect.center.y > containerHeightPx * 0.45f
+
+        if (placeAbove && targetRect.top - totalVerticalOffset - bubbleHeightPx < verticalMarginPx) {
+            placeAbove = false
+        } else if (!placeAbove && targetRect.bottom + totalVerticalOffset + bubbleHeightPx > containerHeightPx - verticalMarginPx) {
+            placeAbove = true
+        }
+
+        val maxLeft = (containerWidthPx - bubbleWidthPx - horizontalMarginPx).coerceAtLeast(horizontalMarginPx)
+        val bubbleLeftPx = (targetRect.center.x - bubbleWidthPx / 2f).coerceIn(horizontalMarginPx, maxLeft)
+
+        val rawTop = if (placeAbove) {
+            targetRect.top - totalVerticalOffset - bubbleHeightPx
+        } else {
+            targetRect.bottom + gapPx
+        }
+        val maxTop = (containerHeightPx - bubbleHeightPx - arrowHeightPx - verticalMarginPx).coerceAtLeast(verticalMarginPx)
+        val bubbleTopPx = rawTop.coerceIn(verticalMarginPx, maxTop)
+
+        val maxArrowX = (bubbleWidthPx - arrowEdgePaddingPx).coerceAtLeast(arrowEdgePaddingPx)
+        val arrowOffsetInBubblePx = (targetRect.center.x - bubbleLeftPx).coerceIn(arrowEdgePaddingPx, maxArrowX)
+
+        return BubblePlacement(
+            placeAbove = placeAbove,
+            bubbleLeftPx = bubbleLeftPx,
+            bubbleTopPx = bubbleTopPx,
+            arrowOffsetInBubblePx = arrowOffsetInBubblePx
+        )
     }
 }
 
 /**
- * Interactive Coachmark / Card Tour bertema ungu MyBBM di atas HomeScreen.
+ * Spotlight App Walkthrough bergaya Referensi Gambar 1:
+ * - Layar digelapkan kecuali lubang spotlight terang tepat di atas elemen asli (`PathOperation.Difference`)
+ * - Bingkai highlight putus-putus putih mengelilingi elemen target
+ * - Bubble tooltip kompak putih dengan panah segitiga menunjuk tepat ke elemen target (`1 / 4` + tombol `Lanjut`/`Oke`)
+ * - Tombol bulat `X` untuk melewati panduan kapan saja
  */
 @Composable
 fun AppWalkthroughOverlay(
+    targetRects: Map<WalkthroughAnchor, Rect>,
     onFinish: () -> Unit,
     onSkip: () -> Unit
 ) {
@@ -111,6 +171,11 @@ fun AppWalkthroughOverlay(
     var currentIndex by remember { mutableIntStateOf(0) }
     val currentStep = steps[currentIndex]
     val isLast = AppWalkthroughSteps.isLastStep(currentIndex, steps.size)
+    val density = LocalDensity.current
+
+    var overlayOriginInRoot by remember { mutableStateOf(Offset.Zero) }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    var bubbleMeasuredHeightPx by remember { mutableFloatStateOf(with(density) { 124.dp.toPx() }) }
 
     BackHandler(enabled = true) {
         if (currentIndex > 0) {
@@ -120,186 +185,217 @@ fun AppWalkthroughOverlay(
         }
     }
 
-    val cardAlignment = when (currentStep.anchor) {
-        WalkthroughAnchor.TOP_RIGHT_FABS -> Alignment.TopCenter
-        WalkthroughAnchor.BOTTOM_SHEET,
-        WalkthroughAnchor.PIN_ICONS,
-        WalkthroughAnchor.CALCULATE_BUTTON -> Alignment.Center
+    val rawTarget = targetRects[currentStep.anchor]
+    val padH = with(density) {
+        when (currentStep.anchor) {
+            WalkthroughAnchor.BOTTOM_SHEET -> 26.dp.toPx()
+            WalkthroughAnchor.PIN_ICONS -> 8.dp.toPx()
+            WalkthroughAnchor.TOP_RIGHT_FABS -> 8.dp.toPx()
+            WalkthroughAnchor.CALCULATE_BUTTON -> 6.dp.toPx()
+        }
+    }
+    val padV = with(density) {
+        when (currentStep.anchor) {
+            WalkthroughAnchor.BOTTOM_SHEET -> 14.dp.toPx()
+            WalkthroughAnchor.PIN_ICONS -> 8.dp.toPx()
+            WalkthroughAnchor.TOP_RIGHT_FABS -> 8.dp.toPx()
+            WalkthroughAnchor.CALCULATE_BUTTON -> 6.dp.toPx()
+        }
+    }
+    val cutoutCornerPx = with(density) {
+        when (currentStep.anchor) {
+            WalkthroughAnchor.BOTTOM_SHEET -> 18.dp.toPx()
+            WalkthroughAnchor.PIN_ICONS -> 14.dp.toPx()
+            WalkthroughAnchor.TOP_RIGHT_FABS -> 28.dp.toPx()
+            WalkthroughAnchor.CALCULATE_BUTTON -> 26.dp.toPx()
+        }
     }
 
-    val cardTopPadding = when (currentStep.anchor) {
-        WalkthroughAnchor.TOP_RIGHT_FABS -> 112.dp
-        else -> 0.dp
+    val fallbackRect = remember(containerSize) {
+        val w = containerSize.width.toFloat().coerceAtLeast(1f)
+        val h = containerSize.height.toFloat().coerceAtLeast(1f)
+        Rect(w * 0.25f, h * 0.45f, w * 0.75f, h * 0.55f)
     }
 
-    val cardBottomPadding = when (currentStep.anchor) {
-        WalkthroughAnchor.BOTTOM_SHEET,
-        WalkthroughAnchor.PIN_ICONS,
-        WalkthroughAnchor.CALCULATE_BUTTON -> 180.dp
-        WalkthroughAnchor.TOP_RIGHT_FABS -> 0.dp
+    val targetLocalRect = if (rawTarget != null && !rawTarget.isEmpty) {
+        Rect(
+            left = rawTarget.left - overlayOriginInRoot.x - padH,
+            top = rawTarget.top - overlayOriginInRoot.y - padV,
+            right = rawTarget.right - overlayOriginInRoot.x + padH,
+            bottom = rawTarget.bottom - overlayOriginInRoot.y + padV
+        )
+    } else {
+        fallbackRect
     }
+
+    val springSpec = spring<Float>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMedium
+    )
+    val animLeft by animateFloatAsState(targetLocalRect.left, springSpec, label = "spotLeft")
+    val animTop by animateFloatAsState(targetLocalRect.top, springSpec, label = "spotTop")
+    val animRight by animateFloatAsState(targetLocalRect.right, springSpec, label = "spotRight")
+    val animBottom by animateFloatAsState(targetLocalRect.bottom, springSpec, label = "spotBottom")
+    val animCorner by animateFloatAsState(cutoutCornerPx, springSpec, label = "spotCorner")
+
+    val animatedCutoutRect = Rect(animLeft, animTop, animRight, animBottom)
+
+    val bubbleWidthDp = 248.dp
+    val bubbleWidthPx = with(density) { bubbleWidthDp.toPx() }
+    val arrowHeightDp = 9.dp
+    val arrowWidthDp = 16.dp
+    val arrowHeightPx = with(density) { arrowHeightDp.toPx() }
+    val gapPx = with(density) { 8.dp.toPx() }
+    val horizontalMarginPx = with(density) { 16.dp.toPx() }
+    val verticalMarginPx = with(density) { 24.dp.toPx() }
+    val arrowEdgePaddingPx = with(density) { 22.dp.toPx() }
+
+    val placement = AppWalkthroughSteps.calculateBubblePlacement(
+        targetRect = targetLocalRect,
+        containerWidthPx = containerSize.width.toFloat().coerceAtLeast(bubbleWidthPx + horizontalMarginPx * 2),
+        containerHeightPx = containerSize.height.toFloat().coerceAtLeast(400f),
+        bubbleWidthPx = bubbleWidthPx,
+        bubbleHeightPx = bubbleMeasuredHeightPx,
+        arrowHeightPx = arrowHeightPx,
+        gapPx = gapPx,
+        horizontalMarginPx = horizontalMarginPx,
+        verticalMarginPx = verticalMarginPx,
+        arrowEdgePaddingPx = arrowEdgePaddingPx
+    )
+
+    val animBubbleLeft by animateFloatAsState(placement.bubbleLeftPx, springSpec, label = "bubbleLeft")
+    val animBubbleTop by animateFloatAsState(placement.bubbleTopPx, springSpec, label = "bubbleTop")
+    val animArrowOffset by animateFloatAsState(placement.arrowOffsetInBubblePx, springSpec, label = "arrowOffset")
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0x88090F59))
+            .onGloballyPositioned { coords ->
+                overlayOriginInRoot = coords.positionInRoot()
+                containerSize = coords.size
+            }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = {}
             )
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp),
-        contentAlignment = cardAlignment
     ) {
+        // 1. Canvas Scrim Gelap dengan Lubang Spotlight Presisi + Bingkai Putus-Putus
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val fullScreenPath = Path().apply {
+                addRect(Rect(0f, 0f, size.width, size.height))
+            }
+            val cutoutPath = Path().apply {
+                addRoundRect(
+                    RoundRect(
+                        rect = animatedCutoutRect,
+                        cornerRadius = CornerRadius(animCorner, animCorner)
+                    )
+                )
+            }
+            val scrimPath = Path.combine(PathOperation.Difference, fullScreenPath, cutoutPath)
+            drawPath(
+                path = scrimPath,
+                color = Color(0xB8060A2E)
+            )
+
+            // Bingkai highlight putus-putus putih terang seperti Gambar 1
+            drawRoundRect(
+                color = Color.White,
+                topLeft = Offset(animatedCutoutRect.left, animatedCutoutRect.top),
+                size = animatedCutoutRect.size,
+                cornerRadius = CornerRadius(animCorner, animCorner),
+                style = Stroke(
+                    width = 2.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f), 0f)
+                )
+            )
+        }
+
+        // 2. Bubble Tooltip Kompak dengan Panah Segitiga menunjuk tepat ke elemen target
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = cardTopPadding, bottom = cardBottomPadding)
-                .shadow(
-                    elevation = 16.dp,
-                    shape = RoundedCornerShape(22.dp),
-                    spotColor = Color(0x55090F59),
-                    ambientColor = Color(0x55090F59)
-                )
-                .clip(RoundedCornerShape(22.dp))
-                .background(Color(0xFFF3F1FF), RoundedCornerShape(22.dp))
-                .border(1.5.dp, Color(0xFFC0BEF8), RoundedCornerShape(22.dp))
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .offset { IntOffset(animBubbleLeft.roundToInt(), animBubbleTop.roundToInt()) }
+                .width(bubbleWidthDp)
         ) {
-            // Header: Badge langkah + Tombol Lewati
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            if (!placement.placeAbove) {
+                // Panah menunjuk ke ATAS (ke elemen di atas bubble)
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(arrowHeightDp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFF7542EF)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = iconForAnchor(currentStep.anchor),
-                            contentDescription = currentStep.title,
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    val halfW = arrowWidthDp.toPx() / 2f
+                    val tipX = animArrowOffset
+                    val triangle = Path().apply {
+                        moveTo(tipX, 0f)
+                        lineTo(tipX - halfW, size.height + 1f)
+                        lineTo(tipX + halfW, size.height + 1f)
+                        close()
                     }
-
-                    Column {
-                        Text(
-                            text = "PANDUAN ${currentIndex + 1}/${steps.size}",
-                            style = TextStyle(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF7542EF),
-                                letterSpacing = 0.6.sp
-                            )
-                        )
-                        Text(
-                            text = currentStep.badgeText,
-                            style = TextStyle(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF4A4E69)
-                            )
-                        )
-                    }
-                }
-
-                TextButton(
-                    onClick = onSkip,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "Lewati",
-                        style = TextStyle(
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF4A4E69)
-                        )
-                    )
+                    drawPath(path = triangle, color = Color.White)
                 }
             }
 
-            // Konten judul & deskripsi dengan animasi transisi halus
-            AnimatedContent(
-                targetState = currentStep,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "walkthroughStepContent"
-            ) { step ->
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = step.title,
-                        style = TextStyle(
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF090F59)
-                        )
-                    )
-                    Text(
-                        text = step.description,
-                        style = TextStyle(
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp,
-                            color = Color(0xFF303B65)
-                        )
-                    )
-                }
-            }
-
-            // Indikator progres titik + Tombol Navigasi (Kembali & Lanjut/Mulai)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    steps.indices.forEach { idx ->
-                        val active = idx == currentIndex
-                        Box(
-                            modifier = Modifier
-                                .width(if (active) 20.dp else 7.dp)
-                                .height(7.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (active) Color(0xFF7542EF) else Color(0xFFC0BEF8)
-                                )
-                        )
-                    }
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (currentIndex > 0) {
-                        TextButton(
-                            onClick = {
-                                currentIndex = AppWalkthroughSteps.previousStepIndex(currentIndex)
-                            }
-                        ) {
-                            Text(
-                                text = "Kembali",
-                                style = TextStyle(
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF303B65)
-                                )
-                            )
+            // Badan Kartu Tooltip Putih Kompak (Gaya Referensi Gambar 1)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onSizeChanged { size ->
+                        if (size.height > 0) {
+                            bubbleMeasuredHeightPx = size.height.toFloat()
                         }
                     }
+                    .shadow(
+                        elevation = 12.dp,
+                        shape = RoundedCornerShape(14.dp),
+                        spotColor = Color(0x45000000),
+                        ambientColor = Color(0x45000000)
+                    )
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.White, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                AnimatedContent(
+                    targetState = currentStep,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "tooltipText"
+                ) { step ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = step.title,
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF090F59)
+                            )
+                        )
+                        Text(
+                            text = step.description,
+                            style = TextStyle(
+                                fontSize = 12.5.sp,
+                                lineHeight = 17.5.sp,
+                                color = Color(0xFF303B65)
+                            )
+                        )
+                    }
+                }
+
+                // Footer Ringkas: "1 / 4" di kiri, Tombol "Lanjut" / "Oke" di kanan
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${currentIndex + 1} / ${steps.size}",
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF6B7280)
+                        )
+                    )
 
                     Button(
                         onClick = {
@@ -309,14 +405,15 @@ fun AppWalkthroughOverlay(
                                 currentIndex = AppWalkthroughSteps.nextStepIndex(currentIndex, steps.size)
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7542EF)),
-                        shape = RoundedCornerShape(14.dp),
-                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp)
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1B4B)),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                        modifier = Modifier.height(32.dp)
                     ) {
                         Text(
-                            text = if (isLast) "Mulai" else "Lanjut",
+                            text = if (isLast) "Oke" else "Lanjut",
                             style = TextStyle(
-                                fontSize = 14.sp,
+                                fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
@@ -324,6 +421,46 @@ fun AppWalkthroughOverlay(
                     }
                 }
             }
+
+            if (placement.placeAbove) {
+                // Panah menunjuk ke BAWAH (ke elemen di bawah bubble)
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(arrowHeightDp)
+                ) {
+                    val halfW = arrowWidthDp.toPx() / 2f
+                    val tipX = animArrowOffset
+                    val triangle = Path().apply {
+                        moveTo(tipX, size.height)
+                        lineTo(tipX - halfW, -1f)
+                        lineTo(tipX + halfW, -1f)
+                        close()
+                    }
+                    drawPath(path = triangle, color = Color.White)
+                }
+            }
+        }
+
+        // 3. Tombol Bulat (X) untuk menutup / melewati walkthrough kapan saja (pojok kiri atas agar bebas bentrok)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(top = 16.dp, start = 18.dp)
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color(0xA611133E), CircleShape)
+                .border(1.dp, Color.White.copy(alpha = 0.45f), CircleShape)
+                .clickable { onSkip() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Tutup Panduan",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

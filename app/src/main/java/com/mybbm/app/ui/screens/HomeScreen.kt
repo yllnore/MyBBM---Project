@@ -41,11 +41,14 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -68,6 +71,7 @@ import com.mybbm.app.domain.model.SearchSuggestionItem
 import com.mybbm.app.ui.components.AppWalkthroughOverlay
 import com.mybbm.app.ui.components.MapVisualOverlay
 import com.mybbm.app.ui.components.OsmMapView
+import com.mybbm.app.ui.components.WalkthroughAnchor
 import com.mybbm.app.util.DeviceLocationHelper
 import com.mybbm.app.util.FuelIconResolver
 import com.mybbm.app.util.VehicleTypeIcon
@@ -280,6 +284,22 @@ fun HomeScreen(
     val density = LocalDensity.current
     var activeMode by remember { mutableStateOf(ActiveInputMode.NONE) }
     var dragOffsetPx by remember { mutableFloatStateOf(0f) }
+    // Peta koordinat target spotlight untuk App Walkthrough (Referensi Gambar 1)
+    val walkthroughTargets = remember { mutableStateMapOf<WalkthroughAnchor, Rect>() }
+    var originPinRect by remember { mutableStateOf<Rect?>(null) }
+    var destinationPinRect by remember { mutableStateOf<Rect?>(null) }
+    LaunchedEffect(originPinRect, destinationPinRect) {
+        val a = originPinRect
+        val b = destinationPinRect
+        if (a != null && b != null) {
+            walkthroughTargets[WalkthroughAnchor.PIN_ICONS] = Rect(
+                left = minOf(a.left, b.left),
+                top = minOf(a.top, b.top),
+                right = maxOf(a.right, b.right),
+                bottom = maxOf(a.bottom, b.bottom)
+            )
+        }
+    }
     // Cegah auto-focus bawaan sistem saat layar pertama kali muncul meng-expand bottom sheet secara tidak sengaja
     var allowFocusExpand by remember { mutableStateOf(false) }
 
@@ -704,7 +724,10 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .statusBarsPadding()
-                    .padding(top = 16.dp, end = 16.dp),
+                    .padding(top = 16.dp, end = 16.dp)
+                    .onGloballyPositioned { coords ->
+                        walkthroughTargets[WalkthroughAnchor.TOP_RIGHT_FABS] = coords.boundsInRoot()
+                    },
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FloatingMapAction(
@@ -844,6 +867,9 @@ fun HomeScreen(
                     modifier = Modifier
                         .width(46.dp)
                         .height(5.dp)
+                        .onGloballyPositioned { coords ->
+                            walkthroughTargets[WalkthroughAnchor.BOTTOM_SHEET] = coords.boundsInRoot()
+                        }
                         .background(
                             color = Color(0xFF7289D2),
                             shape = RoundedCornerShape(3.dp)
@@ -937,7 +963,8 @@ fun HomeScreen(
                         } else {
                             viewModel.startPickingLocation(MapPickMode.ORIGIN)
                         }
-                    }
+                    },
+                    onIconPositioned = { originPinRect = it }
                 )
 
                 // 2. Lokasi Tujuan
@@ -995,7 +1022,8 @@ fun HomeScreen(
                         } else {
                             viewModel.startPickingLocation(MapPickMode.DESTINATION)
                         }
-                    }
+                    },
+                    onIconPositioned = { destinationPinRect = it }
                 )
 
                 // 3. Kendaraan
@@ -1101,6 +1129,9 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
+                    .onGloballyPositioned { coords ->
+                        walkthroughTargets[WalkthroughAnchor.CALCULATE_BUTTON] = coords.boundsInRoot()
+                    }
                     .shadow(
                         elevation = 6.dp,
                         spotColor = Color(0x5544308D),
@@ -1432,6 +1463,7 @@ fun HomeScreen(
 
         if (showWalkthrough) {
             AppWalkthroughOverlay(
+                targetRects = walkthroughTargets,
                 onFinish = { viewModel.completeWalkthrough() },
                 onSkip = { viewModel.completeWalkthrough() }
             )
@@ -1501,7 +1533,8 @@ private fun EditableInputField(
     onFocusChanged: (Boolean) -> Unit,
     imeAction: ImeAction = ImeAction.Default,
     onImeAction: () -> Unit = {},
-    onIconClick: (() -> Unit)? = null
+    onIconClick: (() -> Unit)? = null,
+    onIconPositioned: ((Rect) -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -1572,6 +1605,9 @@ private fun EditableInputField(
             Box(
                 modifier = Modifier
                     .size(38.dp)
+                    .onGloballyPositioned { coords ->
+                        onIconPositioned?.invoke(coords.boundsInRoot())
+                    }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
