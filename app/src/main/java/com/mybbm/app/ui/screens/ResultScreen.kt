@@ -2,6 +2,10 @@ package com.mybbm.app.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -62,16 +67,52 @@ fun ResultScreen(
     val resultMapZoom by viewModel.resultMapZoom.collectAsState()
 
     val configuration = LocalConfiguration.current
-    val screenHeightPx = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
+    val density = LocalDensity.current
+    val screenHeightDp = configuration.screenHeightDp.dp
 
     var isExpanded by remember { mutableStateOf(false) }
-    var sheetHeightFraction by remember { mutableStateOf(0.44f) }
+    var dragOffsetPx by remember { mutableFloatStateOf(0f) }
     var resultMapTarget by remember { mutableStateOf<LatLng?>(null) }
     var resultMapTrigger by remember { mutableLongStateOf(0L) }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(isExpanded) {
-        sheetHeightFraction = if (isExpanded) 0.92f else 0.44f
+    val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f, 355.dp)
+    val expandedSheetHeightDp = maxOf(screenHeightDp * 0.86f, compactSheetHeightDp + 120.dp)
+        .coerceAtMost(screenHeightDp * 0.88f)
+    val animatedSheetHeightDp by animateDpAsState(
+        targetValue = if (isExpanded) expandedSheetHeightDp else compactSheetHeightDp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "resultSheetHeightDp"
+    )
+    val dragOffsetDp = with(density) { dragOffsetPx.toDp() }
+    val bottomSheetHeightDp = (animatedSheetHeightDp - dragOffsetDp)
+        .coerceIn(compactSheetHeightDp * 0.90f, screenHeightDp * 0.90f)
+    val dragThresholdPx = with(density) { 24.dp.toPx() }
+    val currentIsExpanded by rememberUpdatedState(isExpanded)
+
+    val finishSheetDrag: (Float) -> Unit = { velocity ->
+        isExpanded = resolveBottomSheetExpansionAfterDrag(
+            currentlyExpanded = currentIsExpanded,
+            cumulativeDragPx = dragOffsetPx,
+            velocityPxPerSec = velocity,
+            thresholdPx = dragThresholdPx
+        )
+        dragOffsetPx = 0f
+    }
+
+    val sheetNestedScrollConnection = rememberBottomSheetNestedScrollConnection(
+        isExpanded = isExpanded,
+        getDragOffsetPx = { dragOffsetPx },
+        onDragDelta = { dragOffsetPx += it },
+        onDragFinished = { finishSheetDrag(it) }
+    )
+
+    BackHandler(enabled = isExpanded) {
+        dragOffsetPx = 0f
+        isExpanded = false
     }
 
     val nearbySpbu = result?.nearbySpbu ?: emptyList()
@@ -99,7 +140,13 @@ fun ResultScreen(
             spbuCoordinates = nearbySpbu.filter { it.lat != 0.0 && it.lon != 0.0 }.map { LatLng(it.lat, it.lon) },
             cameraTarget = resultMapTarget,
             cameraZoom = 16.5,
-            cameraTrigger = resultMapTrigger
+            cameraTrigger = resultMapTrigger,
+            onMapTap = {
+                if (currentIsExpanded) {
+                    dragOffsetPx = 0f
+                    isExpanded = false
+                }
+            }
         )
 
         // Top Right Floating Action Buttons (FABs)
@@ -154,12 +201,12 @@ fun ResultScreen(
             }
         }
 
-        // 2. Result Bottom Sheet (Draggable & Expandable)
+        // 2. Result Bottom Sheet (Draggable 1:1 & Expandable)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .fillMaxHeight(sheetHeightFraction)
+                .height(bottomSheetHeightDp)
                 .shadow(
                     elevation = 24.dp,
                     spotColor = Color(0x40000000),
@@ -169,45 +216,42 @@ fun ResultScreen(
                     color = Color(0xFFC0BEF8), // Lilac
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 )
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .nestedScroll(sheetNestedScrollConnection)
+                .draggable(
+                    orientation = Orientation.Vertical,
+                    state = rememberDraggableState { delta ->
+                        dragOffsetPx += delta
+                    },
+                    onDragStopped = { velocity ->
+                        finishSheetDrag(velocity)
+                    }
+                )
+                .padding(horizontal = 20.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Drag Handle Bar (Draggable & Clickable)
+            // Drag Handle Bar (Draggable & Clickable dengan area sentuh 40dp)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(24.dp)
-                    .draggable(
-                        orientation = Orientation.Vertical,
-                        state = rememberDraggableState { delta ->
-                            val change = -delta / screenHeightPx
-                            sheetHeightFraction = (sheetHeightFraction + change).coerceIn(0.44f, 0.92f)
-                            isExpanded = sheetHeightFraction > 0.68f
-                        },
-                        onDragStopped = { velocity ->
-                            isExpanded = if (velocity < -400f || sheetHeightFraction > 0.65f) {
-                                true
-                            } else {
-                                false
-                            }
-                            sheetHeightFraction = if (isExpanded) 0.92f else 0.44f
-                        }
-                    )
-                    .clickable { isExpanded = !isExpanded },
+                    .height(40.dp)
+                    .clickable {
+                        dragOffsetPx = 0f
+                        isExpanded = !isExpanded
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Box(
                     modifier = Modifier
-                        .width(44.dp)
-                        .height(4.dp)
+                        .width(46.dp)
+                        .height(5.dp)
                         .background(
                             color = Color(0xFF7289D2),
-                            shape = RoundedCornerShape(2.dp)
+                            shape = RoundedCornerShape(3.dp)
                         )
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Main Result Card (Rute Tujuan Awal sampai Akhir, Total Biaya, Estimasi BBM, dan Jarak Tempuh)
             val totalCostText = result?.let { FuelCalculator.formatRupiah(it.totalCost) } ?: "..."

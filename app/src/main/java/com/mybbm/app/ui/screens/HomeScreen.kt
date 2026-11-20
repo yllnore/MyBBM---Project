@@ -6,7 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -111,7 +111,7 @@ internal fun resolveBottomSheetExpansionAfterDrag(
     cumulativeDragPx: Float,
     velocityPxPerSec: Float,
     thresholdPx: Float,
-    velocityThresholdPxPerSec: Float = 350f
+    velocityThresholdPxPerSec: Float = 250f
 ): Boolean {
     return if (currentlyExpanded) {
         val shouldCollapse = cumulativeDragPx > thresholdPx || velocityPxPerSec > velocityThresholdPxPerSec
@@ -121,7 +121,60 @@ internal fun resolveBottomSheetExpansionAfterDrag(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * NestedScrollConnection bersama agar tarikan turun dari daftar di dalam BottomSheet
+ * saat posisi scroll di atas langsung menarik turun panel BottomSheet secara 1:1.
+ */
+@Composable
+internal fun rememberBottomSheetNestedScrollConnection(
+    isExpanded: Boolean,
+    getDragOffsetPx: () -> Float,
+    onDragDelta: (Float) -> Unit,
+    onDragFinished: (Float) -> Unit
+): NestedScrollConnection {
+    val currentIsExpanded by rememberUpdatedState(isExpanded)
+    val currentOnDragFinished by rememberUpdatedState(onDragFinished)
+
+    return remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val offset = getDragOffsetPx()
+                if (source == NestedScrollSource.UserInput && offset > 0f && available.y < 0f) {
+                    val consumed = available.y.coerceAtLeast(-offset)
+                    onDragDelta(consumed)
+                    return Offset(0f, consumed)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                if (source == NestedScrollSource.UserInput) {
+                    if (currentIsExpanded && available.y > 0f) {
+                        onDragDelta(available.y)
+                        return Offset(0f, available.y)
+                    } else if (!currentIsExpanded && available.y < 0f) {
+                        onDragDelta(available.y)
+                        return Offset(0f, available.y)
+                    }
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (getDragOffsetPx() != 0f) {
+                    currentOnDragFinished(available.y)
+                    return available
+                }
+                return Velocity.Zero
+            }
+        }
+    }
+}
+
 @Composable
 fun HomeScreen(
     viewModel: BbmViewModel,
@@ -370,8 +423,7 @@ fun HomeScreen(
         }
     }
 
-    val isImeVisible = WindowInsets.isImeVisible
-    val isSheetExpanded = bottomSheetState.isExpanded || activeMode != ActiveInputMode.NONE || isImeVisible
+    val isSheetExpanded = bottomSheetState.isExpanded || activeMode != ActiveInputMode.NONE
 
     val collapseBottomSheet: () -> Unit = {
         dragOffsetPx = 0f
@@ -417,26 +469,30 @@ fun HomeScreen(
         }
     }
 
-    // Animasi tinggi BottomSheet (0.44f saat compact, 0.86f saat expanded agar jauh dari status bar/notch)
-    val baseSheetFraction by animateFloatAsState(
-        targetValue = if (isSheetExpanded) 0.86f else 0.44f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "sheetHeightFraction"
-    )
-
     // Root Container
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
         val configuration = LocalConfiguration.current
         val screenHeightDp = configuration.screenHeightDp.dp
+        val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f, 365.dp)
+        val expandedSheetHeightDp = maxOf(screenHeightDp * 0.86f, compactSheetHeightDp + 120.dp)
+            .coerceAtMost(screenHeightDp * 0.88f)
+
+        // Animasi tinggi BottomSheet (~44% min 365dp saat compact agar tombol Hitung utuh, ~86% saat expanded)
+        val animatedSheetHeightDp by animateDpAsState(
+            targetValue = if (isSheetExpanded) expandedSheetHeightDp else compactSheetHeightDp,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "sheetHeightDp"
+        )
+
         val dragOffsetDp = with(density) { dragOffsetPx.toDp() }
-        val bottomSheetHeightDp = (screenHeightDp * baseSheetFraction - dragOffsetDp)
-            .coerceIn(screenHeightDp * 0.40f, screenHeightDp * 0.90f)
-        val dragThresholdPx = with(density) { 44.dp.toPx() }
+        val bottomSheetHeightDp = (animatedSheetHeightDp - dragOffsetDp)
+            .coerceIn(compactSheetHeightDp * 0.90f, screenHeightDp * 0.90f)
+        val dragThresholdPx = with(density) { 24.dp.toPx() }
         val currentIsSheetExpanded by rememberUpdatedState(isSheetExpanded)
 
         val finishSheetDrag: (Float) -> Unit = { velocity ->
@@ -454,43 +510,12 @@ fun HomeScreen(
             }
         }
 
-        val sheetNestedScrollConnection = remember(dragThresholdPx) {
-            object : NestedScrollConnection {
-                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                    if (source == NestedScrollSource.UserInput && dragOffsetPx > 0f && available.y < 0f) {
-                        val consumed = available.y.coerceAtLeast(-dragOffsetPx)
-                        dragOffsetPx += consumed
-                        return Offset(0f, consumed)
-                    }
-                    return Offset.Zero
-                }
-
-                override fun onPostScroll(
-                    consumed: Offset,
-                    available: Offset,
-                    source: NestedScrollSource
-                ): Offset {
-                    if (source == NestedScrollSource.UserInput) {
-                        if (currentIsSheetExpanded && available.y > 0f) {
-                            dragOffsetPx += available.y
-                            return Offset(0f, available.y)
-                        } else if (!currentIsSheetExpanded && available.y < 0f) {
-                            dragOffsetPx += available.y
-                            return Offset(0f, available.y)
-                        }
-                    }
-                    return Offset.Zero
-                }
-
-                override suspend fun onPreFling(available: Velocity): Velocity {
-                    if (dragOffsetPx != 0f) {
-                        finishSheetDrag(available.y)
-                        return available
-                    }
-                    return Velocity.Zero
-                }
-            }
-        }
+        val sheetNestedScrollConnection = rememberBottomSheetNestedScrollConnection(
+            isExpanded = isSheetExpanded,
+            getDragOffsetPx = { dragOffsetPx },
+            onDragDelta = { dragOffsetPx += it },
+            onDragFinished = { finishSheetDrag(it) }
+        )
 
         // 1. Latar Belakang Peta OSM Interaktif (Tema Terang #E8ECEF / #ECEBFF & Polyline Halus #7542EF)
         OsmMapView(

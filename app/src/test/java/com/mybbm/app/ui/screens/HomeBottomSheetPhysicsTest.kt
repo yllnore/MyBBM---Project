@@ -26,15 +26,29 @@ class HomeBottomSheetPhysicsTest {
     }
 
     @Test
+    fun expandedSheet_gentleShortDownwardDragPast24dp_collapsesEvenWithZeroVelocity() {
+        // Simulasi threshold 24dp (~72px pada 3x density): geser turun 80px pelan
+        val thresholdPx = 72f
+        val remainExpanded = resolveBottomSheetExpansionAfterDrag(
+            currentlyExpanded = true,
+            cumulativeDragPx = 80f,
+            velocityPxPerSec = 0f,
+            thresholdPx = thresholdPx
+        )
+
+        assertFalse("Gentle downward drag > 24dp threshold must collapse sheet", remainExpanded)
+    }
+
+    @Test
     fun expandedSheet_downwardFlick_collapsesEvenWithShortDistance() {
         val remainExpanded = resolveBottomSheetExpansionAfterDrag(
             currentlyExpanded = true,
             cumulativeDragPx = 30f,
-            velocityPxPerSec = 600f,
-            thresholdPx = 120f
+            velocityPxPerSec = 300f,
+            thresholdPx = 72f
         )
 
-        assertFalse("Downward flick velocity > 350 px/s must collapse sheet", remainExpanded)
+        assertFalse("Downward flick velocity > 250 px/s must collapse sheet", remainExpanded)
     }
 
     @Test
