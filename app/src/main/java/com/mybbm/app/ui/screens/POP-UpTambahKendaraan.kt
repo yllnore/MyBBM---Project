@@ -1,5 +1,6 @@
 package com.mybbm.app.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,8 +28,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
+import com.mybbm.app.R
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -97,59 +103,11 @@ fun AddVehicleDialog(
                 heightDp = 38.dp
             )
 
-            // Input Field 2: Segmented Selector Jenis Kendaraan (Mobil | Motor)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(38.dp)
-                    .background(Color(0xFFE4E1FC), RoundedCornerShape(12.dp))
-                    .padding(3.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                // Tab Mobil
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .background(
-                            if (typeInput == "Mobil") Color(0xFF7542EF) else Color.Transparent,
-                            RoundedCornerShape(9.dp)
-                        )
-                        .clickable { typeInput = "Mobil" },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Mobil",
-                        style = TextStyle(
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (typeInput == "Mobil") Color.White else Color(0xFF4A4E69)
-                        )
-                    )
-                }
-
-                // Tab Motor
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .background(
-                            if (typeInput == "Motor") Color(0xFF7542EF) else Color.Transparent,
-                            RoundedCornerShape(9.dp)
-                        )
-                        .clickable { typeInput = "Motor" },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Motor",
-                        style = TextStyle(
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (typeInput == "Motor") Color.White else Color(0xFF4A4E69)
-                        )
-                    )
-                }
-            }
+            // Input Field 2: Pilihan Jenis Kendaraan (Mobil / Motor) sejajar presisi dengan input field (260.dp)
+            VehicleTypeSelector(
+                selectedType = typeInput,
+                onSelectType = { typeInput = it }
+            )
 
             // Input Field 3: Konsumsi BBM km/L (Otomatis format ribuan titik seperti 1.000)
             DialogInputField(
@@ -303,6 +261,60 @@ fun DialogInputField(
             }
         }
     )
+}
+
+@Composable
+fun VehicleTypeSelector(
+    selectedType: String,
+    onSelectType: (String) -> Unit
+) {
+    val options = listOf(
+        "Mobil" to R.drawable.mobil,
+        "Motor" to R.drawable.motor
+    )
+    Row(
+        modifier = Modifier.width(260.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        options.forEach { (label, iconRes) ->
+            val isSelected = selectedType == label
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        color = if (isSelected) Color(0xFF7542EF) else Color.White,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .border(
+                        width = if (isSelected) 1.5.dp else 1.dp,
+                        color = if (isSelected) Color(0xFF7542EF) else Color(0xFFBFB7FA),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .clickable { onSelectType(label) },
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = label,
+                    colorFilter = ColorFilter.tint(
+                        if (isSelected) Color.White else Color(0xFF4A4E69)
+                    ),
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = label,
+                    style = TextStyle(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isSelected) Color.White else Color(0xFF4A4E69)
+                    )
+                )
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true)
