@@ -16,7 +16,7 @@ if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
-val supabaseUrl = localProperties.getProperty("SUPABASE_URL") ?: "https://vbmxsertxcthtdvxxksr.supabase.co"
+val supabaseUrl = localProperties.getProperty("SUPABASE_URL") ?: "https://jyluikwboznhhssgvbxj.supabase.co"
 val supabaseAnonKey = localProperties.getProperty("SUPABASE_ANON_KEY") ?: ""
 
 android {

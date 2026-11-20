@@ -10,7 +10,7 @@ import io.github.jan.supabase.postgrest.Postgrest
  * Menggunakan URL dan Anon Key dari BuildConfig (local.properties) dengan fallback aman.
  */
 object SupabaseClientInstance {
-    private val rawUrl: String = (BuildConfig.SUPABASE_URL.ifBlank { "https://vbmxsertxcthtdvxxksr.supabase.co" })
+    private val rawUrl: String = (BuildConfig.SUPABASE_URL.ifBlank { "https://jyluikwboznhhssgvbxj.supabase.co" })
         .trim()
         .removeSuffix("/")
         .removeSuffix("/rest/v1")
@@ -19,7 +19,7 @@ object SupabaseClientInstance {
     val client: SupabaseClient by lazy {
         createSupabaseClient(
             supabaseUrl = rawUrl,
-            supabaseKey = BuildConfig.SUPABASE_ANON_KEY.ifBlank { "sb_publishable_LsxMia4oSWlDv8QUUv9X9Q_YZIofnWn" }
+            supabaseKey = BuildConfig.SUPABASE_ANON_KEY.ifBlank { "sb_publishable_cYHuhkUk-J45T5GNhXhClg_zNGOU_bH" }
         ) {
             install(Postgrest)
         }
