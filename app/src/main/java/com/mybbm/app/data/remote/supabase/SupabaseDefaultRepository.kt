@@ -8,6 +8,7 @@ import com.mybbm.app.data.local.entity.BbmKustomEntity
 import com.mybbm.app.data.local.entity.KendaraanKustomEntity
 import com.mybbm.app.domain.model.FuelModel
 import com.mybbm.app.domain.model.VehicleModel
+import com.mybbm.app.util.VehicleTypeHelper
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
@@ -47,7 +48,7 @@ data class KendaraanDto(
 ) {
     fun toVehicleModel(): VehicleModel {
         val displayName = namaKendaraan.uppercase().trim()
-        val finalType = if (jenisKendaraan.contains("motor", ignoreCase = true)) "Motor" else "Mobil"
+        val finalType = VehicleTypeHelper.normalizeType(jenisKendaraan)
         return VehicleModel(
             id = idKendaraan,
             name = displayName,
@@ -58,7 +59,7 @@ data class KendaraanDto(
     }
 
     fun toEntity(): KendaraanKustomEntity {
-        val finalType = if (jenisKendaraan.contains("motor", ignoreCase = true)) "Motor" else "Mobil"
+        val finalType = VehicleTypeHelper.normalizeType(jenisKendaraan)
         return KendaraanKustomEntity(
             id = idKendaraan,
             nama = namaKendaraan.uppercase().trim(),

@@ -20,6 +20,12 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,6 +40,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import com.mybbm.app.R
+import com.mybbm.app.util.VehicleTypeHelper
+import com.mybbm.app.util.VehicleTypeIcon
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -158,12 +166,13 @@ fun AddVehicleDialog(
                         )
                         .clickable {
                             val trimmedName = nameInput.trim()
+                            val trimmedType = typeInput.trim()
                             val eff = FuelCalculator.parseEfficiency(efficiencyInput)
-                            if (trimmedName.isEmpty() || eff == null || eff <= BigDecimal.ZERO) {
-                                errorMessage = "Harap isi nama dan nilai angka yang valid"
+                            if (trimmedName.isEmpty() || trimmedType.isEmpty() || eff == null || eff <= BigDecimal.ZERO) {
+                                errorMessage = "Harap isi nama, jenis kendaraan, dan angka yang valid"
                             } else {
                                 errorMessage = null
-                                val finalType = typeInput.ifBlank { "Mobil" }
+                                val finalType = VehicleTypeHelper.normalizeType(trimmedType)
                                 onSimpanClick(trimmedName, finalType, eff)
                             }
                         },
@@ -268,51 +277,121 @@ fun VehicleTypeSelector(
     selectedType: String,
     onSelectType: (String) -> Unit
 ) {
-    val options = listOf(
-        "Mobil" to R.drawable.mobil,
-        "Motor" to R.drawable.motor
-    )
-    Row(
+    var expanded by remember { mutableStateOf(false) }
+    var isCustomMode by remember(selectedType) {
+        mutableStateOf(selectedType.isBlank() || !VehicleTypeHelper.isPresetType(selectedType))
+    }
+
+    val displayLabel = if (isCustomMode) {
+        VehicleTypeHelper.CUSTOM_OPTION
+    } else {
+        VehicleTypeHelper.normalizeType(selectedType)
+    }
+
+    Column(
         modifier = Modifier.width(260.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        options.forEach { (label, iconRes) ->
-            val isSelected = selectedType == label
+        Box(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp)
+                    .fillMaxWidth()
+                    .height(38.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        color = if (isSelected) Color(0xFF7542EF) else Color.White,
-                        shape = RoundedCornerShape(12.dp)
-                    )
                     .border(
-                        width = if (isSelected) 1.5.dp else 1.dp,
-                        color = if (isSelected) Color(0xFF7542EF) else Color(0xFFBFB7FA),
+                        width = 1.dp,
+                        color = if (expanded) Color(0xFF7542EF) else Color(0xFFBFB7FA),
                         shape = RoundedCornerShape(12.dp)
                     )
-                    .clickable { onSelectType(label) },
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = label,
-                    colorFilter = ColorFilter.tint(
-                        if (isSelected) Color.White else Color(0xFF4A4E69)
-                    ),
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = label,
-                    style = TextStyle(
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isSelected) Color.White else Color(0xFF4A4E69)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    VehicleTypeIcon(
+                        type = if (isCustomMode) VehicleTypeHelper.CUSTOM_OPTION else displayLabel,
+                        tint = Color(0xFF090F59),
+                        modifier = Modifier.size(18.dp)
                     )
+                    Text(
+                        text = displayLabel,
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontFamily = FontFamily.Default,
+                            fontWeight = FontWeight(500),
+                            color = Color(0xFF090F59)
+                        )
+                    )
+                }
+
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Pilih Jenis Kendaraan",
+                    tint = Color(0xFF4A4E69),
+                    modifier = Modifier.size(20.dp)
                 )
             }
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier
+                    .width(260.dp)
+                    .background(Color.White)
+            ) {
+                VehicleTypeHelper.DROPDOWN_OPTIONS.forEach { option ->
+                    val isOptionSelected = (option == VehicleTypeHelper.CUSTOM_OPTION && isCustomMode) ||
+                        (!isCustomMode && option.equals(displayLabel, ignoreCase = true))
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                VehicleTypeIcon(
+                                    type = option,
+                                    tint = if (isOptionSelected) Color(0xFF7542EF) else Color(0xFF090F59),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = if (option == VehicleTypeHelper.CUSTOM_OPTION) "Lainnya (Kustom)" else option,
+                                    style = TextStyle(
+                                        fontSize = 14.sp,
+                                        fontWeight = if (isOptionSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isOptionSelected) Color(0xFF7542EF) else Color(0xFF090F59)
+                                    )
+                                )
+                            }
+                        },
+                        onClick = {
+                            expanded = false
+                            if (option == VehicleTypeHelper.CUSTOM_OPTION) {
+                                isCustomMode = true
+                                if (VehicleTypeHelper.isPresetType(selectedType)) {
+                                    onSelectType("")
+                                }
+                            } else {
+                                isCustomMode = false
+                                onSelectType(option)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+        if (isCustomMode) {
+            DialogInputField(
+                value = if (VehicleTypeHelper.isPresetType(selectedType)) "" else selectedType,
+                onValueChange = { onSelectType(it) },
+                placeholder = "Ketik jenis (misal: Angkot, Genset)",
+                heightDp = 38.dp
+            )
         }
     }
 }

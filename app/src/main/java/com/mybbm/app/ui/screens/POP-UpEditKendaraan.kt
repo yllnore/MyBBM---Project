@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.domain.model.VehicleModel
 import com.mybbm.app.util.FuelCalculator
+import com.mybbm.app.util.VehicleTypeHelper
 import java.math.BigDecimal
 
 @Composable
@@ -175,13 +176,14 @@ fun EditVehicleDialog(
                         )
                         .clickable {
                             val trimmedName = nameInput.trim()
+                            val trimmedType = typeInput.trim()
                             val eff = FuelCalculator.parseEfficiency(efficiencyInput)
                             val id = vehicle?.id?.takeIf { it.isNotBlank() }
-                            if (trimmedName.isEmpty() || eff == null || eff <= BigDecimal.ZERO) {
-                                errorMessage = "Harap isi nama dan nilai angka yang valid"
+                            if (trimmedName.isEmpty() || trimmedType.isEmpty() || eff == null || eff <= BigDecimal.ZERO) {
+                                errorMessage = "Harap isi nama, jenis kendaraan, dan angka yang valid"
                             } else if (id != null) {
                                 errorMessage = null
-                                val finalType = typeInput.ifBlank { "Mobil" }
+                                val finalType = VehicleTypeHelper.normalizeType(trimmedType)
                                 onSimpanClick(id, trimmedName, finalType, eff)
                             }
                         },

@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
 import com.mybbm.app.util.FuelCalculator
+import com.mybbm.app.util.VehicleTypeIcon
 import com.mybbm.app.viewmodel.BbmViewModel
 
 @Composable
@@ -171,12 +172,11 @@ fun VehicleSettingsScreen(
                     }
                 } else {
                     vehicles.forEach { v ->
-                        val iconRes = if (v.type.equals("Motor", ignoreCase = true)) R.drawable.motor else R.drawable.mobil
-                        val consumptionFormatted = "${FuelCalculator.formatEfficiency(v.fuelEfficiency)} km/L"
+                        val consumptionFormatted = "${v.type} • ${FuelCalculator.formatEfficiency(v.fuelEfficiency)} km/L"
                         VehicleCardItem(
                             name = v.name,
                             consumption = consumptionFormatted,
-                            iconRes = iconRes,
+                            type = v.type,
                             onEditClick = {
                                 if (viewModel != null) {
                                     viewModel.vehicleToEditOrDelete.value = v
@@ -197,7 +197,7 @@ fun VehicleSettingsScreen(
 fun VehicleCardItem(
     name: String,
     consumption: String,
-    iconRes: Int,
+    type: String = "Mobil",
     onEditClick: () -> Unit = {}
 ) {
     Row(
@@ -231,10 +231,9 @@ fun VehicleCardItem(
                     .background(Color(0xFFBDB8F8)),
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = name,
-                    contentScale = ContentScale.Fit,
+                VehicleTypeIcon(
+                    type = type,
+                    tint = Color(0xFF090F59),
                     modifier = Modifier.size(36.dp)
                 )
             }

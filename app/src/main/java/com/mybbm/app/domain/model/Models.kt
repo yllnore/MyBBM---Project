@@ -3,7 +3,7 @@ package com.mybbm.app.domain.model
 data class VehicleModel(
     val id: String,
     val name: String,
-    val type: String, // "Mobil" atau "Motor"
+    val type: String, // "Mobil", "Motor", "Pickup", "Truk", "Bus", atau kustom
     val fuelEfficiency: java.math.BigDecimal, // km/L
     val isDefault: Boolean = false
 )

@@ -69,6 +69,7 @@ import com.mybbm.app.ui.components.MapVisualOverlay
 import com.mybbm.app.ui.components.OsmMapView
 import com.mybbm.app.util.DeviceLocationHelper
 import com.mybbm.app.util.FuelIconResolver
+import com.mybbm.app.util.VehicleTypeIcon
 import com.mybbm.app.viewmodel.BbmViewModel
 import com.mybbm.app.viewmodel.MapPickMode
 import kotlinx.coroutines.delay
@@ -1361,10 +1362,9 @@ fun HomeScreen(
                             ) {
                                 when (item) {
                                     is SearchSuggestionItem.Vehicle -> {
-                                        val iconRes = if (item.vehicle.type.equals("Motor", ignoreCase = true)) R.drawable.motor else R.drawable.mobil
-                                        Image(
-                                            painter = painterResource(id = iconRes),
-                                            contentDescription = null,
+                                        VehicleTypeIcon(
+                                            type = item.vehicle.type,
+                                            tint = Color(0xFF11133E),
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }

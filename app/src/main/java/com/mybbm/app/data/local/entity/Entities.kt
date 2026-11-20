@@ -14,7 +14,7 @@ data class KendaraanKustomEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
     val nama: String,
-    val tipe: String, // "Mobil" atau "Motor"
+    val tipe: String, // "Mobil", "Motor", "Pickup", "Truk", "Bus", atau kustom
     @ColumnInfo(name = "rasio_konsumsi")
     val rasioKonsumsi: Double, // km/L
     @ColumnInfo(name = "is_default")
