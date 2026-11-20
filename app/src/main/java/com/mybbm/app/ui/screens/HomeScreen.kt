@@ -4,9 +4,12 @@ import android.Manifest
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -474,10 +477,10 @@ fun HomeScreen(
         val hasEstimatedDistance = estimatedDistanceKm != null && originCoord != null && destinationCoord != null
         val minCompactDp = if (hasEstimatedDistance) 405.dp else 365.dp
         val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f, minCompactDp)
-        val expandedSheetHeightDp = maxOf(screenHeightDp * 0.86f, compactSheetHeightDp + 120.dp)
-            .coerceAtMost(screenHeightDp * 0.88f)
+        val expandedSheetHeightDp = maxOf(screenHeightDp * 0.92f, compactSheetHeightDp + 160.dp)
+            .coerceAtMost(screenHeightDp * 0.93f)
 
-        // Animasi tinggi BottomSheet (~44% min 365dp saat compact agar ke-4 input & tombol Hitung utuh, ~86% saat expanded)
+        // Animasi tinggi BottomSheet (~44% min 365dp saat compact agar ke-4 input & tombol Hitung utuh, ~92% saat expanded)
         val animatedSheetHeightDp by animateDpAsState(
             targetValue = if (isSheetExpanded) expandedSheetHeightDp else compactSheetHeightDp,
             animationSpec = spring(
@@ -489,7 +492,7 @@ fun HomeScreen(
 
         val dragOffsetDp = with(density) { dragOffsetPx.toDp() }
         val bottomSheetHeightDp = (animatedSheetHeightDp - dragOffsetDp)
-            .coerceIn(compactSheetHeightDp, screenHeightDp * 0.90f)
+            .coerceIn(compactSheetHeightDp, screenHeightDp * 0.94f)
         val dragThresholdPx = with(density) { 24.dp.toPx() }
         val currentIsSheetExpanded by rememberUpdatedState(isSheetExpanded)
 
@@ -543,27 +546,33 @@ fun HomeScreen(
             }
         )
 
-        // Tombol Mengambang di Kanan Atas (FABs)
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(top = 16.dp, end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        // Tombol Mengambang di Kanan Atas (FABs) — sembunyikan halus saat sheet naik penuh agar tidak mengintip di sudut atas
+        AnimatedVisibility(
+            visible = !isSheetExpanded,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopEnd)
         ) {
-            FloatingMapAction(
-                iconResId = R.drawable.settings_icon,
-                onClick = onNavigateToSettings
-            )
-            FloatingMapAction(
-                iconResId = R.drawable.history,
-                onClick = onNavigateToHistory
-            )
-            FloatingMapAction(
-                iconResId = R.drawable.current_location_icon,
-                isLoading = isLocatingUser,
-                onClick = centerMapToCurrentLocation
-            )
+            Column(
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(top = 16.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                FloatingMapAction(
+                    iconResId = R.drawable.settings_icon,
+                    onClick = onNavigateToSettings
+                )
+                FloatingMapAction(
+                    iconResId = R.drawable.history,
+                    onClick = onNavigateToHistory
+                )
+                FloatingMapAction(
+                    iconResId = R.drawable.current_location_icon,
+                    isLoading = isLocatingUser,
+                    onClick = centerMapToCurrentLocation
+                )
+            }
         }
 
         // Map Location Picker Overlay (Jika sedang mode pilih lokasi di peta)

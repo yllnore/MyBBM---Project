@@ -78,8 +78,8 @@ fun ResultScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f, 355.dp)
-    val expandedSheetHeightDp = maxOf(screenHeightDp * 0.86f, compactSheetHeightDp + 120.dp)
-        .coerceAtMost(screenHeightDp * 0.88f)
+    val expandedSheetHeightDp = maxOf(screenHeightDp * 0.92f, compactSheetHeightDp + 160.dp)
+        .coerceAtMost(screenHeightDp * 0.93f)
     val animatedSheetHeightDp by animateDpAsState(
         targetValue = if (isExpanded) expandedSheetHeightDp else compactSheetHeightDp,
         animationSpec = spring(
@@ -90,7 +90,7 @@ fun ResultScreen(
     )
     val dragOffsetDp = with(density) { dragOffsetPx.toDp() }
     val bottomSheetHeightDp = (animatedSheetHeightDp - dragOffsetDp)
-        .coerceIn(compactSheetHeightDp, screenHeightDp * 0.90f)
+        .coerceIn(compactSheetHeightDp, screenHeightDp * 0.94f)
     val dragThresholdPx = with(density) { 24.dp.toPx() }
     val currentIsExpanded by rememberUpdatedState(isExpanded)
 
@@ -150,55 +150,61 @@ fun ResultScreen(
             }
         )
 
-        // Top Right Floating Action Buttons (FABs)
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(top = 16.dp, end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        // Top Right Floating Action Buttons (FABs) — sembunyikan halus saat sheet naik penuh
+        AnimatedVisibility(
+            visible = !isExpanded,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopEnd)
         ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .size(48.dp)
-                    .shadow(6.dp, CircleShape)
-                    .background(Color(0xFFC0BEF8), CircleShape)
-                    .clickable { onNavigateToSettings() },
-                contentAlignment = Alignment.Center
+                    .statusBarsPadding()
+                    .padding(top = 16.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.settings_icon),
-                    contentDescription = "Settings",
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .shadow(6.dp, CircleShape)
-                    .background(Color(0xFFC0BEF8), CircleShape)
-                    .clickable { onNavigateToHistory() },
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.history),
-                    contentDescription = "Histori",
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .shadow(4.dp, CircleShape)
-                    .background(Color(0xFFE5E7EB), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.current_location_icon),
-                    contentDescription = "Disabled",
-                    modifier = Modifier.size(24.dp),
-                    colorFilter = ColorFilter.tint(Color(0xFF9CA3AF))
-                )
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .shadow(6.dp, CircleShape)
+                        .background(Color(0xFFC0BEF8), CircleShape)
+                        .clickable { onNavigateToSettings() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.settings_icon),
+                        contentDescription = "Settings",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .shadow(6.dp, CircleShape)
+                        .background(Color(0xFFC0BEF8), CircleShape)
+                        .clickable { onNavigateToHistory() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.history),
+                        contentDescription = "Histori",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .shadow(4.dp, CircleShape)
+                        .background(Color(0xFFE5E7EB), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.current_location_icon),
+                        contentDescription = "Disabled",
+                        modifier = Modifier.size(24.dp),
+                        colorFilter = ColorFilter.tint(Color(0xFF9CA3AF))
+                    )
+                }
             }
         }
 
