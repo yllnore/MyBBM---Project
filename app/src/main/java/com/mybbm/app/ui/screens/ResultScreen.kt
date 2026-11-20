@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -89,7 +90,7 @@ fun ResultScreen(
     )
     val dragOffsetDp = with(density) { dragOffsetPx.toDp() }
     val bottomSheetHeightDp = (animatedSheetHeightDp - dragOffsetDp)
-        .coerceIn(compactSheetHeightDp * 0.90f, screenHeightDp * 0.90f)
+        .coerceIn(compactSheetHeightDp, screenHeightDp * 0.90f)
     val dragThresholdPx = with(density) { 24.dp.toPx() }
     val currentIsExpanded by rememberUpdatedState(isExpanded)
 
@@ -234,7 +235,10 @@ fun ResultScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)
-                    .clickable {
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
                         dragOffsetPx = 0f
                         isExpanded = !isExpanded
                     },

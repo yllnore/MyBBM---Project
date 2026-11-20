@@ -4,14 +4,9 @@ import android.Manifest
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -475,11 +471,13 @@ fun HomeScreen(
     ) {
         val configuration = LocalConfiguration.current
         val screenHeightDp = configuration.screenHeightDp.dp
-        val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f, 365.dp)
+        val hasEstimatedDistance = estimatedDistanceKm != null && originCoord != null && destinationCoord != null
+        val minCompactDp = if (hasEstimatedDistance) 405.dp else 365.dp
+        val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f, minCompactDp)
         val expandedSheetHeightDp = maxOf(screenHeightDp * 0.86f, compactSheetHeightDp + 120.dp)
             .coerceAtMost(screenHeightDp * 0.88f)
 
-        // Animasi tinggi BottomSheet (~44% min 365dp saat compact agar tombol Hitung utuh, ~86% saat expanded)
+        // Animasi tinggi BottomSheet (~44% min 365dp saat compact agar ke-4 input & tombol Hitung utuh, ~86% saat expanded)
         val animatedSheetHeightDp by animateDpAsState(
             targetValue = if (isSheetExpanded) expandedSheetHeightDp else compactSheetHeightDp,
             animationSpec = spring(
@@ -491,7 +489,7 @@ fun HomeScreen(
 
         val dragOffsetDp = with(density) { dragOffsetPx.toDp() }
         val bottomSheetHeightDp = (animatedSheetHeightDp - dragOffsetDp)
-            .coerceIn(compactSheetHeightDp * 0.90f, screenHeightDp * 0.90f)
+            .coerceIn(compactSheetHeightDp, screenHeightDp * 0.90f)
         val dragThresholdPx = with(density) { 24.dp.toPx() }
         val currentIsSheetExpanded by rememberUpdatedState(isSheetExpanded)
 
@@ -651,12 +649,15 @@ fun HomeScreen(
                 .padding(horizontal = 20.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Drag Handle Bar dengan area sentuh luas (44dp)
+            // Drag Handle Bar dengan area sentuh luas (40dp) tanpa kotak ripple abu-abu
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)
-                    .clickable {
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
                         if (isSheetExpanded) {
                             collapseBottomSheet()
                         } else {
@@ -678,14 +679,36 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // 2. Keempat TextField dalam urutan Column utama (Scrollable agar ramah keyboard virtual)
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+            // 2. Konten form + daftar saran di dalam BoxWithConstraints:
+            // Ke-4 TextField selalu tampil penuh saat compact/collapse (tidak pernah terpotong jadi 2)
+            // dan hanya di-scroll secara adaptif jika keyboard benar-benar menyempitkan ruang layar.
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .verticalScroll(rememberScrollState())
+                    .weight(1f)
             ) {
+                val fieldsScrollState = rememberScrollState()
+                val shouldCapFieldsForKeyboard = activeMode != ActiveInputMode.NONE &&
+                    dragOffsetPx <= 0f &&
+                    maxHeight < 430.dp
+                val fieldsModifier = if (shouldCapFieldsForKeyboard) {
+                    val maxFieldsHeight = (maxHeight - 190.dp).coerceIn(115.dp, 232.dp)
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = maxFieldsHeight)
+                        .verticalScroll(fieldsScrollState)
+                } else {
+                    Modifier.fillMaxWidth()
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = fieldsModifier
+                    ) {
                 // 1. Lokasi Awal
                 EditableInputField(
                     textFieldValue = originTextFieldValue,
@@ -958,17 +981,12 @@ fun HomeScreen(
             }
 
             // 3. Penampung Dinamis di BAGIAN PALING BAWAH (Tepat setelah tombol Hitung Biaya)
-            AnimatedVisibility(
-                visible = activeMode != ActiveInputMode.NONE,
-                enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
-                exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = true)
-            ) {
+            // Hanya masuk layout saat activeMode != NONE agar tidak mencuri ruang ke-4 TextField saat sheet diturunkan
+            if (activeMode != ActiveInputMode.NONE) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .weight(1f)
                         .padding(top = 10.dp)
                 ) {
                     // Garis Pembatas Horizontal Sesuai Referensi Gambar
@@ -1240,8 +1258,10 @@ fun HomeScreen(
                     }
                 }
             }
+                }
+            }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
         }
     }
 }
