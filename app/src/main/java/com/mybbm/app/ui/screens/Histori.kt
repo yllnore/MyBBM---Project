@@ -258,7 +258,7 @@ fun HistoriCardItem(
                     painter = painterResource(id = R.drawable.hapus),
                     contentDescription = "Hapus Histori",
                     tint = Color.Unspecified,
-                    modifier = Modifier.size(35.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
