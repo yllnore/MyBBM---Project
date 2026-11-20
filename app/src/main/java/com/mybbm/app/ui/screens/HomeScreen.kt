@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import com.mybbm.app.R
 import com.mybbm.app.domain.model.LatLng
 import com.mybbm.app.domain.model.SearchSuggestionItem
+import com.mybbm.app.ui.components.AppWalkthroughOverlay
 import com.mybbm.app.ui.components.MapVisualOverlay
 import com.mybbm.app.ui.components.OsmMapView
 import com.mybbm.app.util.DeviceLocationHelper
@@ -268,6 +269,7 @@ fun HomeScreen(
     val isSearchingLocation by viewModel.isSearchingLocation.collectAsState()
     val isDetectingLocation by viewModel.isDetectingLocation.collectAsState()
     val mapPickMode by viewModel.mapPickMode.collectAsState()
+    val showWalkthrough by viewModel.showWalkthrough.collectAsState()
     val context = LocalContext.current
 
     // 1. Auto-Expand BottomSheet State & Coroutine
@@ -573,6 +575,16 @@ fun HomeScreen(
             bottomSheetState.collapse()
         }
         previousMapPickMode = mapPickMode
+    }
+
+    // Pastikan BottomSheet berada pada posisi COMPACT saat App Walkthrough aktif
+    LaunchedEffect(showWalkthrough) {
+        if (showWalkthrough) {
+            if (mapPickMode != MapPickMode.NONE) {
+                viewModel.cancelPickingLocation()
+            }
+            collapseBottomSheet()
+        }
     }
 
     // Reset posisi BottomSheet dan saran saat form di-reset ke awal (misal saat kembali ke beranda)
@@ -1416,6 +1428,13 @@ fun HomeScreen(
             }
 
             Spacer(modifier = Modifier.height(6.dp))
+        }
+
+        if (showWalkthrough) {
+            AppWalkthroughOverlay(
+                onFinish = { viewModel.completeWalkthrough() },
+                onSkip = { viewModel.completeWalkthrough() }
+            )
         }
 
         if (showEnableLocationDialog) {

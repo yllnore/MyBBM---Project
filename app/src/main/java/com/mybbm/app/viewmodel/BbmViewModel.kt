@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mybbm.app.R
+import com.mybbm.app.data.local.WalkthroughPreferences
 import com.mybbm.app.data.local.database.AppDatabase
 import com.mybbm.app.data.local.entity.BbmKustomEntity
 import com.mybbm.app.data.local.entity.KendaraanKustomEntity
@@ -98,6 +99,27 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     // Navigation State
     private val _currentScreen = MutableStateFlow(AppScreen.SPLASH)
     val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
+
+    // App Walkthrough State (muncul 1x pada pemakaian pertama atau diputar ulang dari Pengaturan)
+    private val _showWalkthrough = MutableStateFlow(false)
+    val showWalkthrough: StateFlow<Boolean> = _showWalkthrough.asStateFlow()
+
+    fun triggerFirstTimeWalkthroughIfNeeded() {
+        val appContext = getApplication<Application>()
+        if (!WalkthroughPreferences.hasSeenWalkthrough(appContext)) {
+            _showWalkthrough.value = true
+        }
+    }
+
+    fun replayWalkthrough() {
+        _showWalkthrough.value = true
+        navigateTo(AppScreen.HOME)
+    }
+
+    fun completeWalkthrough() {
+        _showWalkthrough.value = false
+        WalkthroughPreferences.setHasSeenWalkthrough(getApplication(), true)
+    }
 
     // Form Input State
     private val _origin = MutableStateFlow("")

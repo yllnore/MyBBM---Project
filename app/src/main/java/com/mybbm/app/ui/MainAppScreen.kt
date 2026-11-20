@@ -64,6 +64,7 @@ fun MainAppScreen(viewModel: BbmViewModel) {
                 SplashScreen(
                     onGetStartedClick = {
                         viewModel.navigateTo(AppScreen.HOME)
+                        viewModel.triggerFirstTimeWalkthroughIfNeeded()
                     }
                 )
             }
@@ -95,6 +96,7 @@ fun MainAppScreen(viewModel: BbmViewModel) {
                         when (item) {
                             "Kendaraan" -> viewModel.navigateTo(AppScreen.VEHICLES)
                             "BBM" -> viewModel.navigateTo(AppScreen.FUELS)
+                            "Panduan Aplikasi" -> viewModel.replayWalkthrough()
                             "Tentang MYBBM" -> viewModel.navigateTo(AppScreen.ABOUT)
                         }
                     }

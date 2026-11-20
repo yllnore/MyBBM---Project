@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -28,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -129,7 +131,14 @@ fun SettingsScreen(
                     onClick = { onMenuItemClick("BBM") }
                 )
 
-                // Item 3: Tentang MYBBM
+                // Item 3: Panduan Aplikasi (App Walkthrough)
+                SettingMenuItem(
+                    iconVector = Icons.Outlined.HelpOutline,
+                    title = "Panduan Aplikasi",
+                    onClick = { onMenuItemClick("Panduan Aplikasi") }
+                )
+
+                // Item 4: Tentang MYBBM
                 SettingMenuItem(
                     iconRes = R.drawable.icon,
                     title = "Tentang MYBBM",
@@ -142,7 +151,8 @@ fun SettingsScreen(
 
 @Composable
 fun SettingMenuItem(
-    iconRes: Int,
+    iconRes: Int? = null,
+    iconVector: ImageVector? = null,
     title: String,
     onClick: () -> Unit = {}
 ) {
@@ -178,12 +188,21 @@ fun SettingMenuItem(
                     .background(Color(0xFFBDB8F8)),
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = title,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.size(36.dp)
-                )
+                if (iconVector != null) {
+                    Icon(
+                        imageVector = iconVector,
+                        contentDescription = title,
+                        tint = Color(0xFF090F59),
+                        modifier = Modifier.size(34.dp)
+                    )
+                } else if (iconRes != null) {
+                    Image(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = title,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
             }
 
             Text(
