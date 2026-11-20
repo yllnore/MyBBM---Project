@@ -33,6 +33,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -79,69 +80,134 @@ enum class ActiveInputMode {
     FUEL
 }
 
+enum class SheetDetent {
+    PEEK,
+    COMPACT,
+    EXPANDED
+}
+
 /**
- * State pengontrol ekspansi BottomSheet form perjalanan.
- * Menyediakan method suspend expand() dan collapse() untuk dipanggil via coroutine.
+ * State pengontrol 3 tahap posisi BottomSheet (PEEK ~46dp, COMPACT ~44%, EXPANDED ~92%).
+ * Menyediakan method suspend expand(), collapse(), dan minimize() untuk dipanggil via coroutine.
  */
 class BottomSheetState(
-    initialExpanded: Boolean = false
+    initialDetent: SheetDetent = SheetDetent.COMPACT
 ) {
-    var isExpanded by mutableStateOf(initialExpanded)
+    var detent by mutableStateOf(initialDetent)
+
+    val isExpanded: Boolean
+        get() = detent == SheetDetent.EXPANDED
+
+    val isPeek: Boolean
+        get() = detent == SheetDetent.PEEK
 
     suspend fun expand() {
-        isExpanded = true
+        detent = SheetDetent.EXPANDED
     }
 
     suspend fun collapse() {
-        isExpanded = false
+        detent = SheetDetent.COMPACT
+    }
+
+    suspend fun minimize() {
+        detent = SheetDetent.PEEK
     }
 }
 
 @Composable
-fun rememberBottomSheetState(initialExpanded: Boolean = false): BottomSheetState {
-    return remember { BottomSheetState(initialExpanded) }
+fun rememberBottomSheetState(initialDetent: SheetDetent = SheetDetent.COMPACT): BottomSheetState {
+    return remember { BottomSheetState(initialDetent) }
 }
 
 /**
- * Menentukan apakah BottomSheet harus tetap expanded atau collapse setelah pengguna selesai menggeser (drag/fling).
+ * Menentukan detent tujuan (PEEK / COMPACT / EXPANDED) setelah pengguna selesai menggeser (drag/fling).
+ * - cumulativeDragPx > 0 : geser turun (memperkecil panel)
+ * - cumulativeDragPx < 0 : geser naik (memperbesar panel)
  */
-internal fun resolveBottomSheetExpansionAfterDrag(
-    currentlyExpanded: Boolean,
+internal fun resolveSheetDetentAfterDrag(
+    currentDetent: SheetDetent,
     cumulativeDragPx: Float,
     velocityPxPerSec: Float,
-    thresholdPx: Float,
-    velocityThresholdPxPerSec: Float = 250f
-): Boolean {
-    return if (currentlyExpanded) {
-        val shouldCollapse = cumulativeDragPx > thresholdPx || velocityPxPerSec > velocityThresholdPxPerSec
-        !shouldCollapse
-    } else {
-        cumulativeDragPx < -thresholdPx || velocityPxPerSec < -velocityThresholdPxPerSec
+    stepThresholdPx: Float,
+    jumpThresholdPx: Float = stepThresholdPx * 12f,
+    stepVelocityThresholdPxPerSec: Float = 250f,
+    jumpVelocityThresholdPxPerSec: Float = 2200f
+): SheetDetent {
+    return when (currentDetent) {
+        SheetDetent.EXPANDED -> {
+            if (velocityPxPerSec < -stepVelocityThresholdPxPerSec) {
+                SheetDetent.EXPANDED
+            } else if (
+                cumulativeDragPx > jumpThresholdPx ||
+                (velocityPxPerSec > jumpVelocityThresholdPxPerSec && cumulativeDragPx > 0f)
+            ) {
+                SheetDetent.PEEK
+            } else if (
+                cumulativeDragPx > stepThresholdPx ||
+                velocityPxPerSec > stepVelocityThresholdPxPerSec
+            ) {
+                SheetDetent.COMPACT
+            } else {
+                SheetDetent.EXPANDED
+            }
+        }
+        SheetDetent.COMPACT -> {
+            when {
+                velocityPxPerSec < -stepVelocityThresholdPxPerSec -> SheetDetent.EXPANDED
+                velocityPxPerSec > stepVelocityThresholdPxPerSec -> SheetDetent.PEEK
+                cumulativeDragPx < -stepThresholdPx -> SheetDetent.EXPANDED
+                cumulativeDragPx > stepThresholdPx -> SheetDetent.PEEK
+                else -> SheetDetent.COMPACT
+            }
+        }
+        SheetDetent.PEEK -> {
+            if (velocityPxPerSec > stepVelocityThresholdPxPerSec) {
+                SheetDetent.PEEK
+            } else if (
+                cumulativeDragPx < -jumpThresholdPx ||
+                (velocityPxPerSec < -jumpVelocityThresholdPxPerSec && cumulativeDragPx < 0f)
+            ) {
+                SheetDetent.EXPANDED
+            } else if (
+                cumulativeDragPx < -stepThresholdPx ||
+                velocityPxPerSec < -stepVelocityThresholdPxPerSec
+            ) {
+                SheetDetent.COMPACT
+            } else {
+                SheetDetent.PEEK
+            }
+        }
     }
 }
 
 /**
- * NestedScrollConnection bersama agar tarikan turun dari daftar di dalam BottomSheet
- * saat posisi scroll di atas langsung menarik turun panel BottomSheet secara 1:1.
+ * NestedScrollConnection bersama agar tarikan turun/naik dari konten scrollable di dalam BottomSheet
+ * saat mencapai batas scroll langsung menarik panel BottomSheet secara 1:1 di seluruh 3 tahap detent.
  */
 @Composable
 internal fun rememberBottomSheetNestedScrollConnection(
-    isExpanded: Boolean,
+    currentDetent: SheetDetent,
     getDragOffsetPx: () -> Float,
     onDragDelta: (Float) -> Unit,
     onDragFinished: (Float) -> Unit
 ): NestedScrollConnection {
-    val currentIsExpanded by rememberUpdatedState(isExpanded)
+    val detentState by rememberUpdatedState(currentDetent)
     val currentOnDragFinished by rememberUpdatedState(onDragFinished)
 
     return remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val offset = getDragOffsetPx()
-                if (source == NestedScrollSource.UserInput && offset > 0f && available.y < 0f) {
-                    val consumed = available.y.coerceAtLeast(-offset)
-                    onDragDelta(consumed)
-                    return Offset(0f, consumed)
+                if (source == NestedScrollSource.UserInput) {
+                    if (offset > 0f && available.y < 0f) {
+                        val consumed = available.y.coerceAtLeast(-offset)
+                        onDragDelta(consumed)
+                        return Offset(0f, consumed)
+                    } else if (offset < 0f && available.y > 0f) {
+                        val consumed = available.y.coerceAtMost(-offset)
+                        onDragDelta(consumed)
+                        return Offset(0f, consumed)
+                    }
                 }
                 return Offset.Zero
             }
@@ -152,10 +218,10 @@ internal fun rememberBottomSheetNestedScrollConnection(
                 source: NestedScrollSource
             ): Offset {
                 if (source == NestedScrollSource.UserInput) {
-                    if (currentIsExpanded && available.y > 0f) {
+                    if (detentState != SheetDetent.PEEK && available.y > 0f) {
                         onDragDelta(available.y)
                         return Offset(0f, available.y)
-                    } else if (!currentIsExpanded && available.y < 0f) {
+                    } else if (detentState != SheetDetent.EXPANDED && available.y < 0f) {
                         onDragDelta(available.y)
                         return Offset(0f, available.y)
                     }
@@ -422,7 +488,11 @@ fun HomeScreen(
         }
     }
 
-    val isSheetExpanded = bottomSheetState.isExpanded || activeMode != ActiveInputMode.NONE
+    val effectiveDetent = when {
+        mapPickMode != MapPickMode.NONE -> SheetDetent.PEEK
+        activeMode != ActiveInputMode.NONE -> SheetDetent.EXPANDED
+        else -> bottomSheetState.detent
+    }
 
     val collapseBottomSheet: () -> Unit = {
         dragOffsetPx = 0f
@@ -432,6 +502,17 @@ fun HomeScreen(
         viewModel.clearSearchResults()
         coroutineScope.launch {
             bottomSheetState.collapse()
+        }
+    }
+
+    val minimizeBottomSheet: () -> Unit = {
+        dragOffsetPx = 0f
+        activeMode = ActiveInputMode.NONE
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+        viewModel.clearSearchResults()
+        coroutineScope.launch {
+            bottomSheetState.minimize()
         }
     }
 
@@ -452,15 +533,32 @@ fun HomeScreen(
         }
     }
 
+    // Sinkronisasi otomatis BottomSheet dengan mode pilih lokasi di peta (Figma 36:236 & 36:200)
+    var previousMapPickMode by remember { mutableStateOf(MapPickMode.NONE) }
+    LaunchedEffect(mapPickMode) {
+        if (mapPickMode != MapPickMode.NONE) {
+            dragOffsetPx = 0f
+            activeMode = ActiveInputMode.NONE
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+            viewModel.clearSearchResults()
+            bottomSheetState.minimize()
+        } else if (previousMapPickMode != MapPickMode.NONE && bottomSheetState.detent == SheetDetent.PEEK) {
+            dragOffsetPx = 0f
+            bottomSheetState.collapse()
+        }
+        previousMapPickMode = mapPickMode
+    }
+
     // Reset posisi BottomSheet dan saran saat form di-reset ke awal (misal saat kembali ke beranda)
     LaunchedEffect(origin, destination, selectedVehicle, selectedFuel) {
-        if (origin.isBlank() && destination.isBlank() && selectedVehicle == null && selectedFuel == null) {
+        if (origin.isBlank() && destination.isBlank() && selectedVehicle == null && selectedFuel == null && mapPickMode == MapPickMode.NONE) {
             collapseBottomSheet()
         }
     }
 
-    // Tombol Back sistem menutup BottomSheet / pick mode sebelum keluar dari aplikasi
-    BackHandler(enabled = isSheetExpanded || mapPickMode != MapPickMode.NONE) {
+    // Tombol Back sistem mengembalikan BottomSheet ke compact / keluar dari pick mode sebelum keluar aplikasi
+    BackHandler(enabled = effectiveDetent != SheetDetent.COMPACT || mapPickMode != MapPickMode.NONE) {
         if (mapPickMode != MapPickMode.NONE) {
             viewModel.cancelPickingLocation()
         } else {
@@ -475,14 +573,19 @@ fun HomeScreen(
         val configuration = LocalConfiguration.current
         val screenHeightDp = configuration.screenHeightDp.dp
         val hasEstimatedDistance = estimatedDistanceKm != null && originCoord != null && destinationCoord != null
+        val peekSheetHeightDp = 46.dp
         val minCompactDp = if (hasEstimatedDistance) 405.dp else 365.dp
         val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f, minCompactDp)
         val expandedSheetHeightDp = maxOf(screenHeightDp * 0.92f, compactSheetHeightDp + 160.dp)
             .coerceAtMost(screenHeightDp * 0.93f)
 
-        // Animasi tinggi BottomSheet (~44% min 365dp saat compact agar ke-4 input & tombol Hitung utuh, ~92% saat expanded)
+        // Animasi tinggi BottomSheet: PEEK (46dp) <-> COMPACT (~44%) <-> EXPANDED (~92%)
         val animatedSheetHeightDp by animateDpAsState(
-            targetValue = if (isSheetExpanded) expandedSheetHeightDp else compactSheetHeightDp,
+            targetValue = when (effectiveDetent) {
+                SheetDetent.PEEK -> peekSheetHeightDp
+                SheetDetent.COMPACT -> compactSheetHeightDp
+                SheetDetent.EXPANDED -> expandedSheetHeightDp
+            },
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioLowBouncy,
                 stiffness = Spring.StiffnessMediumLow
@@ -492,27 +595,33 @@ fun HomeScreen(
 
         val dragOffsetDp = with(density) { dragOffsetPx.toDp() }
         val bottomSheetHeightDp = (animatedSheetHeightDp - dragOffsetDp)
-            .coerceIn(compactSheetHeightDp, screenHeightDp * 0.94f)
+            .coerceIn(peekSheetHeightDp, screenHeightDp * 0.94f)
         val dragThresholdPx = with(density) { 24.dp.toPx() }
-        val currentIsSheetExpanded by rememberUpdatedState(isSheetExpanded)
+        val jumpThresholdPx = with(density) { (expandedSheetHeightDp - compactSheetHeightDp + 48.dp).toPx() }
+        val currentEffectiveDetent by rememberUpdatedState(effectiveDetent)
+        val currentMapPickMode by rememberUpdatedState(mapPickMode)
 
         val finishSheetDrag: (Float) -> Unit = { velocity ->
-            val shouldRemainExpanded = resolveBottomSheetExpansionAfterDrag(
-                currentlyExpanded = currentIsSheetExpanded,
+            val targetDetent = resolveSheetDetentAfterDrag(
+                currentDetent = currentEffectiveDetent,
                 cumulativeDragPx = dragOffsetPx,
                 velocityPxPerSec = velocity,
-                thresholdPx = dragThresholdPx
+                stepThresholdPx = dragThresholdPx,
+                jumpThresholdPx = jumpThresholdPx
             )
             dragOffsetPx = 0f
-            if (shouldRemainExpanded) {
-                expandBottomSheetDefault()
-            } else {
-                collapseBottomSheet()
+            if (currentMapPickMode != MapPickMode.NONE && targetDetent != SheetDetent.PEEK) {
+                viewModel.cancelPickingLocation()
+            }
+            when (targetDetent) {
+                SheetDetent.EXPANDED -> expandBottomSheetDefault()
+                SheetDetent.COMPACT -> collapseBottomSheet()
+                SheetDetent.PEEK -> minimizeBottomSheet()
             }
         }
 
         val sheetNestedScrollConnection = rememberBottomSheetNestedScrollConnection(
-            isExpanded = isSheetExpanded,
+            currentDetent = effectiveDetent,
             getDragOffsetPx = { dragOffsetPx },
             onDragDelta = { dragOffsetPx += it },
             onDragFinished = { finishSheetDrag(it) }
@@ -540,15 +649,15 @@ fun HomeScreen(
             cameraTrigger = mapCameraTrigger,
             routePoints = routePoints,
             onMapTap = {
-                if (currentIsSheetExpanded) {
+                if (currentEffectiveDetent == SheetDetent.EXPANDED) {
                     collapseBottomSheet()
                 }
             }
         )
 
-        // Tombol Mengambang di Kanan Atas (FABs) — sembunyikan halus saat sheet naik penuh agar tidak mengintip di sudut atas
+        // Tombol Mengambang di Kanan Atas (FABs) — sembunyikan saat sheet naik penuh atau mode pilih pin di peta
         AnimatedVisibility(
-            visible = !isSheetExpanded,
+            visible = effectiveDetent != SheetDetent.EXPANDED && mapPickMode == MapPickMode.NONE,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.TopEnd)
@@ -577,12 +686,12 @@ fun HomeScreen(
 
         // Map Location Picker Overlay (Jika sedang mode pilih lokasi di peta)
         if (mapPickMode != MapPickMode.NONE) {
-            // Pin statis di tengah area map yang terlihat (di atas bottom sheet)
+            // Pin statis tepat di tengah area map yang terlihat (identik dengan box OsmMapView)
             // Bisa langsung dipencet/diklik untuk memilih lokasi!
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(screenHeightDp - bottomSheetHeightDp),
+                    .fillMaxSize()
+                    .padding(bottom = bottomSheetHeightDp),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
@@ -602,11 +711,11 @@ fun HomeScreen(
                 }
             }
 
-            // Tombol Konfirmasi di bawah
+            // Tombol Konfirmasi di atas peek handle bar
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 36.dp, start = 24.dp, end = 24.dp)
+                    .padding(bottom = maxOf(bottomSheetHeightDp, peekSheetHeightDp) + 18.dp, start = 24.dp, end = 24.dp)
             ) {
                 Button(
                     onClick = {
@@ -628,7 +737,44 @@ fun HomeScreen(
             }
         }
 
-        // Panel Input Perjalanan (Draggable 1:1 & Auto-Expand Bottom Sheet)
+        // Tombol Kembali Kiri Atas (Figma 36:236 & 36:200) — hanya muncul saat mode pilih lokasi di peta aktif
+        AnimatedVisibility(
+            visible = mapPickMode != MapPickMode.NONE,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopStart)
+        ) {
+            Box(
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(top = 16.dp, start = 24.dp)
+                    .width(51.dp)
+                    .height(49.dp)
+                    .shadow(
+                        elevation = 7.dp,
+                        shape = RoundedCornerShape(13.dp),
+                        spotColor = Color(0x40000000),
+                        ambientColor = Color(0x40000000)
+                    )
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(
+                        color = Color(0xFFBDB8F8),
+                        shape = RoundedCornerShape(13.dp)
+                    )
+                    .clickable {
+                        viewModel.cancelPickingLocation()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_map_pick_back),
+                    contentDescription = "Kembali dari pilih lokasi",
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
+        // Panel Input Perjalanan (Draggable 1:1 3-Tahap: PEEK 46dp <-> COMPACT 44% <-> EXPANDED 92%)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -644,6 +790,7 @@ fun HomeScreen(
                     color = Color(0xFFC0BEF8), // Lilac warna tema
                     shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
                 )
+                .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
                 .nestedScroll(sheetNestedScrollConnection)
                 .draggable(
                     orientation = Orientation.Vertical,
@@ -655,22 +802,26 @@ fun HomeScreen(
                     }
                 )
                 .imePadding() // Menjamin tidak tertutup keyboard layar
-                .padding(horizontal = 20.dp, vertical = 6.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Drag Handle Bar dengan area sentuh luas (40dp) tanpa kotak ripple abu-abu
+            // Drag Handle Bar dengan area sentuh luas (38dp) tanpa kotak ripple abu-abu — pas di tengah saat PEEK (46dp)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(40.dp)
+                    .height(38.dp)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) {
-                        if (isSheetExpanded) {
-                            collapseBottomSheet()
-                        } else {
-                            expandBottomSheetDefault()
+                        when {
+                            mapPickMode != MapPickMode.NONE -> {
+                                viewModel.cancelPickingLocation()
+                                collapseBottomSheet()
+                            }
+                            effectiveDetent == SheetDetent.PEEK -> collapseBottomSheet()
+                            effectiveDetent == SheetDetent.EXPANDED -> collapseBottomSheet()
+                            else -> expandBottomSheetDefault()
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -686,7 +837,7 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // 2. Konten form + daftar saran di dalam BoxWithConstraints:
             // Ke-4 TextField selalu tampil penuh saat compact/collapse (tidak pernah terpotong jadi 2)
@@ -767,13 +918,10 @@ fun HomeScreen(
                         }
                     },
                     onIconClick = {
-                        coroutineScope.launch {
-                            if (mapPickMode == MapPickMode.ORIGIN) {
-                                viewModel.cancelPickingLocation()
-                            } else {
-                                collapseBottomSheet()
-                                viewModel.startPickingLocation(MapPickMode.ORIGIN)
-                            }
+                        if (mapPickMode == MapPickMode.ORIGIN) {
+                            viewModel.cancelPickingLocation()
+                        } else {
+                            viewModel.startPickingLocation(MapPickMode.ORIGIN)
                         }
                     }
                 )
@@ -828,13 +976,10 @@ fun HomeScreen(
                         }
                     },
                     onIconClick = {
-                        coroutineScope.launch {
-                            if (mapPickMode == MapPickMode.DESTINATION) {
-                                viewModel.cancelPickingLocation()
-                            } else {
-                                collapseBottomSheet()
-                                viewModel.startPickingLocation(MapPickMode.DESTINATION)
-                            }
+                        if (mapPickMode == MapPickMode.DESTINATION) {
+                            viewModel.cancelPickingLocation()
+                        } else {
+                            viewModel.startPickingLocation(MapPickMode.DESTINATION)
                         }
                     }
                 )
@@ -1115,7 +1260,6 @@ fun HomeScreen(
                                         Button(
                                             onClick = {
                                                 val pickMode = if (activeMode == ActiveInputMode.ORIGIN) MapPickMode.ORIGIN else MapPickMode.DESTINATION
-                                                collapseBottomSheet()
                                                 viewModel.startPickingLocation(pickMode)
                                             },
                                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7542EF)),
@@ -1359,20 +1503,28 @@ private fun EditableInputField(
         }
 
         if (iconResId != null) {
-            Image(
-                painter = painterResource(id = iconResId),
-                contentDescription = placeholder,
+            Box(
                 modifier = Modifier
-                    .size(28.dp)
-                    .clickable {
+                    .size(38.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
                         if (onIconClick != null) {
                             onIconClick()
                         } else {
                             focusRequester.requestFocus()
                             onFocusChanged(true)
                         }
-                    }
-            )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = iconResId),
+                    contentDescription = placeholder,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }

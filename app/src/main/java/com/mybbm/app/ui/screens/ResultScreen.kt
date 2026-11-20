@@ -26,6 +26,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -71,17 +72,22 @@ fun ResultScreen(
     val density = LocalDensity.current
     val screenHeightDp = configuration.screenHeightDp.dp
 
-    var isExpanded by remember { mutableStateOf(false) }
+    var sheetDetent by remember { mutableStateOf(SheetDetent.COMPACT) }
     var dragOffsetPx by remember { mutableFloatStateOf(0f) }
     var resultMapTarget by remember { mutableStateOf<LatLng?>(null) }
     var resultMapTrigger by remember { mutableLongStateOf(0L) }
     val coroutineScope = rememberCoroutineScope()
 
+    val peekSheetHeightDp = 46.dp
     val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f, 355.dp)
     val expandedSheetHeightDp = maxOf(screenHeightDp * 0.92f, compactSheetHeightDp + 160.dp)
         .coerceAtMost(screenHeightDp * 0.93f)
     val animatedSheetHeightDp by animateDpAsState(
-        targetValue = if (isExpanded) expandedSheetHeightDp else compactSheetHeightDp,
+        targetValue = when (sheetDetent) {
+            SheetDetent.PEEK -> peekSheetHeightDp
+            SheetDetent.COMPACT -> compactSheetHeightDp
+            SheetDetent.EXPANDED -> expandedSheetHeightDp
+        },
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioLowBouncy,
             stiffness = Spring.StiffnessMediumLow
@@ -90,30 +96,32 @@ fun ResultScreen(
     )
     val dragOffsetDp = with(density) { dragOffsetPx.toDp() }
     val bottomSheetHeightDp = (animatedSheetHeightDp - dragOffsetDp)
-        .coerceIn(compactSheetHeightDp, screenHeightDp * 0.94f)
+        .coerceIn(peekSheetHeightDp, screenHeightDp * 0.94f)
     val dragThresholdPx = with(density) { 24.dp.toPx() }
-    val currentIsExpanded by rememberUpdatedState(isExpanded)
+    val jumpThresholdPx = with(density) { (expandedSheetHeightDp - compactSheetHeightDp + 48.dp).toPx() }
+    val currentSheetDetent by rememberUpdatedState(sheetDetent)
 
     val finishSheetDrag: (Float) -> Unit = { velocity ->
-        isExpanded = resolveBottomSheetExpansionAfterDrag(
-            currentlyExpanded = currentIsExpanded,
+        sheetDetent = resolveSheetDetentAfterDrag(
+            currentDetent = currentSheetDetent,
             cumulativeDragPx = dragOffsetPx,
             velocityPxPerSec = velocity,
-            thresholdPx = dragThresholdPx
+            stepThresholdPx = dragThresholdPx,
+            jumpThresholdPx = jumpThresholdPx
         )
         dragOffsetPx = 0f
     }
 
     val sheetNestedScrollConnection = rememberBottomSheetNestedScrollConnection(
-        isExpanded = isExpanded,
+        currentDetent = sheetDetent,
         getDragOffsetPx = { dragOffsetPx },
         onDragDelta = { dragOffsetPx += it },
         onDragFinished = { finishSheetDrag(it) }
     )
 
-    BackHandler(enabled = isExpanded) {
+    BackHandler(enabled = sheetDetent != SheetDetent.COMPACT) {
         dragOffsetPx = 0f
-        isExpanded = false
+        sheetDetent = SheetDetent.COMPACT
     }
 
     val nearbySpbu = result?.nearbySpbu ?: emptyList()
@@ -125,7 +133,7 @@ fun ResultScreen(
         OsmMapView(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 260.dp),
+                .padding(bottom = bottomSheetHeightDp.coerceAtMost(compactSheetHeightDp)),
             centerCoordinate = LatLng(-0.5021, 117.1536),
             zoomLevel = 12.0,
             savedCameraCenter = resultMapCenter,
@@ -143,16 +151,16 @@ fun ResultScreen(
             cameraZoom = 16.5,
             cameraTrigger = resultMapTrigger,
             onMapTap = {
-                if (currentIsExpanded) {
+                if (currentSheetDetent == SheetDetent.EXPANDED) {
                     dragOffsetPx = 0f
-                    isExpanded = false
+                    sheetDetent = SheetDetent.COMPACT
                 }
             }
         )
 
         // Top Right Floating Action Buttons (FABs) — sembunyikan halus saat sheet naik penuh
         AnimatedVisibility(
-            visible = !isExpanded,
+            visible = sheetDetent != SheetDetent.EXPANDED,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.TopEnd)
@@ -208,7 +216,7 @@ fun ResultScreen(
             }
         }
 
-        // 2. Result Bottom Sheet (Draggable 1:1 & Expandable)
+        // 2. Result Bottom Sheet (Draggable 1:1 3-Tahap: PEEK 46dp <-> COMPACT 44% <-> EXPANDED 92%)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -223,6 +231,7 @@ fun ResultScreen(
                     color = Color(0xFFC0BEF8), // Lilac
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 )
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .nestedScroll(sheetNestedScrollConnection)
                 .draggable(
                     orientation = Orientation.Vertical,
@@ -233,20 +242,24 @@ fun ResultScreen(
                         finishSheetDrag(velocity)
                     }
                 )
-                .padding(horizontal = 20.dp, vertical = 10.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Drag Handle Bar (Draggable & Clickable dengan area sentuh 40dp)
+            // Drag Handle Bar (Draggable & Clickable dengan area sentuh 38dp — pas di tengah saat PEEK 46dp)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(40.dp)
+                    .height(38.dp)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) {
                         dragOffsetPx = 0f
-                        isExpanded = !isExpanded
+                        sheetDetent = when (sheetDetent) {
+                            SheetDetent.PEEK -> SheetDetent.COMPACT
+                            SheetDetent.COMPACT -> SheetDetent.EXPANDED
+                            SheetDetent.EXPANDED -> SheetDetent.COMPACT
+                        }
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -650,7 +663,8 @@ fun ResultScreen(
                                     Button(
                                         onClick = {
                                             expandedSpbuIndex = null
-                                            isExpanded = false
+                                            dragOffsetPx = 0f
+                                            sheetDetent = SheetDetent.COMPACT
                                             coroutineScope.launch {
                                                 delay(100L) // Jeda agar animasi turunnya bottom sheet mulus tanpa bentrok dengan render peta
                                                 if (spbu.lat != 0.0 && spbu.lon != 0.0) {
