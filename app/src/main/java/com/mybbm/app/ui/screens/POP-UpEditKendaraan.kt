@@ -81,9 +81,8 @@ fun EditVehicleDialog(
         ) {
             // Header: Judul Dialog + Icon Hapus
             Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Edit Detail Kendaraan",
