@@ -100,7 +100,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentScreen = MutableStateFlow(AppScreen.SPLASH)
     val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
 
-    // App Walkthrough State (muncul 1x pada pemakaian pertama atau diputar ulang dari Pengaturan)
+    // App Walkthrough State (muncul 1x pada pemakaian pertama)
     private val _showWalkthrough = MutableStateFlow(false)
     val showWalkthrough: StateFlow<Boolean> = _showWalkthrough.asStateFlow()
 
@@ -109,11 +109,6 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
         if (!WalkthroughPreferences.hasSeenWalkthrough(appContext)) {
             _showWalkthrough.value = true
         }
-    }
-
-    fun replayWalkthrough() {
-        _showWalkthrough.value = true
-        navigateTo(AppScreen.HOME)
     }
 
     fun completeWalkthrough() {
