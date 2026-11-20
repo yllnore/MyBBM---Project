@@ -78,8 +78,10 @@ fun ResultScreen(
     var resultMapTrigger by remember { mutableLongStateOf(0L) }
     val coroutineScope = rememberCoroutineScope()
 
-    val peekSheetHeightDp = 46.dp
-    val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f, 355.dp)
+    val navBarBottomDp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val peekVisibleHeightDp = 44.dp
+    val peekSheetHeightDp = peekVisibleHeightDp + navBarBottomDp
+    val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f + navBarBottomDp * 0.5f, 355.dp + navBarBottomDp)
     val expandedSheetHeightDp = maxOf(screenHeightDp * 0.92f, compactSheetHeightDp + 160.dp)
         .coerceAtMost(screenHeightDp * 0.93f)
     val animatedSheetHeightDp by animateDpAsState(
@@ -242,10 +244,10 @@ fun ResultScreen(
                         finishSheetDrag(velocity)
                     }
                 )
-                .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 10.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 3.dp, bottom = 3.dp + navBarBottomDp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Drag Handle Bar (Draggable & Clickable dengan area sentuh 38dp — pas di tengah saat PEEK 46dp)
+            // Drag Handle Bar (Draggable & Clickable dengan area sentuh 38dp — pas di tengah 44dp di atas nav bar)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

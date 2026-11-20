@@ -572,10 +572,12 @@ fun HomeScreen(
     ) {
         val configuration = LocalConfiguration.current
         val screenHeightDp = configuration.screenHeightDp.dp
+        val navBarBottomDp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         val hasEstimatedDistance = estimatedDistanceKm != null && originCoord != null && destinationCoord != null
-        val peekSheetHeightDp = 46.dp
-        val minCompactDp = if (hasEstimatedDistance) 405.dp else 365.dp
-        val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f, minCompactDp)
+        val peekVisibleHeightDp = 44.dp
+        val peekSheetHeightDp = peekVisibleHeightDp + navBarBottomDp
+        val minCompactDp = (if (hasEstimatedDistance) 405.dp else 365.dp) + navBarBottomDp
+        val compactSheetHeightDp = maxOf(screenHeightDp * 0.44f + navBarBottomDp * 0.5f, minCompactDp)
         val expandedSheetHeightDp = maxOf(screenHeightDp * 0.92f, compactSheetHeightDp + 160.dp)
             .coerceAtMost(screenHeightDp * 0.93f)
 
@@ -777,10 +779,10 @@ fun HomeScreen(
                     }
                 )
                 .imePadding() // Menjamin tidak tertutup keyboard layar
-                .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 6.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 3.dp, bottom = 3.dp + navBarBottomDp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Drag Handle Bar dengan area sentuh luas (38dp) tanpa kotak ripple abu-abu — pas di tengah saat PEEK (46dp)
+            // Drag Handle Bar dengan area sentuh luas (38dp) tanpa kotak ripple abu-abu — pas di tengah 44dp di atas nav bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
