@@ -1,6 +1,5 @@
 -- ==============================================================================
--- SKEMA LENGKAP SUPABASE UNTUK MYBBM (APLIKASI ANDROID + LANDING PAGE WEBSITE)
--- Salin seluruh isi skrip ini, tempel ke Supabase SQL Editor, lalu klik RUN.
+-- SKEMA RESMI SUPABASE UNTUK APLIKASI ANDROID MYBBM (MURNI & BERSIH)
 -- ==============================================================================
 
 -- 1. TABEL JENIS BBM
@@ -39,32 +38,6 @@ CREATE TABLE IF NOT EXISTS public.kendaraan (
     deleted_at TIMESTAMPTZ
 );
 
--- 4. TABEL RILIS APK (UNTUK DISTRIBUSI DI WEBSITE)
-CREATE TABLE IF NOT EXISTS public.app_releases (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    version_name TEXT NOT NULL,
-    version_code INT NOT NULL,
-    apk_url TEXT NOT NULL,
-    file_size_mb NUMERIC(5, 2) NOT NULL DEFAULT 6.05,
-    changelog TEXT,
-    min_android_sdk INT NOT NULL DEFAULT 26,
-    download_count BIGINT NOT NULL DEFAULT 0,
-    is_latest BOOLEAN NOT NULL DEFAULT true,
-    released_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- 5. TABEL FEEDBACK / TESTIMONI WEBSITE
-CREATE TABLE IF NOT EXISTS public.website_feedback (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    role TEXT,
-    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
-    comment TEXT NOT NULL,
-    is_approved BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
 -- ==============================================================================
 -- KEAMANAN (ROW LEVEL SECURITY / RLS)
 -- ==============================================================================
@@ -72,45 +45,20 @@ CREATE TABLE IF NOT EXISTS public.website_feedback (
 ALTER TABLE public.jenis_bbm ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.harga_bbm ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.kendaraan ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.app_releases ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.website_feedback ENABLE ROW LEVEL SECURITY;
 
--- Policy Read-Only Publik untuk Aplikasi & Website
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT ON public.jenis_bbm TO anon, authenticated;
+GRANT SELECT ON public.harga_bbm TO anon, authenticated;
+GRANT SELECT ON public.kendaraan TO anon, authenticated;
+
 DROP POLICY IF EXISTS "Allow public read jenis_bbm" ON public.jenis_bbm;
-CREATE POLICY "Allow public read jenis_bbm" ON public.jenis_bbm FOR SELECT USING (true);
+CREATE POLICY "Allow public read jenis_bbm" ON public.jenis_bbm FOR SELECT TO anon, authenticated USING (true);
 
 DROP POLICY IF EXISTS "Allow public read harga_bbm" ON public.harga_bbm;
-CREATE POLICY "Allow public read harga_bbm" ON public.harga_bbm FOR SELECT USING (true);
+CREATE POLICY "Allow public read harga_bbm" ON public.harga_bbm FOR SELECT TO anon, authenticated USING (true);
 
 DROP POLICY IF EXISTS "Allow public read kendaraan" ON public.kendaraan;
-CREATE POLICY "Allow public read kendaraan" ON public.kendaraan FOR SELECT USING (deleted_at IS NULL);
-
-DROP POLICY IF EXISTS "Allow public read app_releases" ON public.app_releases;
-CREATE POLICY "Allow public read app_releases" ON public.app_releases FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Allow public read website_feedback" ON public.website_feedback;
-CREATE POLICY "Allow public read website_feedback" ON public.website_feedback FOR SELECT USING (is_approved = true);
-
--- Policy Pengunjung Website Bisa Mengirim Ulasan
-DROP POLICY IF EXISTS "Allow public insert website_feedback" ON public.website_feedback;
-CREATE POLICY "Allow public insert website_feedback" ON public.website_feedback FOR INSERT WITH CHECK (name IS NOT NULL AND length(name) > 1 AND rating >= 1 AND rating <= 5);
-
--- RPC Function: Penghitung Download Otomatis & Aman
-CREATE OR REPLACE FUNCTION public.increment_download_count(release_id UUID)
-RETURNS BIGINT
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-    new_count BIGINT;
-BEGIN
-    UPDATE public.app_releases
-    SET download_count = download_count + 1
-    WHERE id = release_id
-    RETURNING download_count INTO new_count;
-    RETURN new_count;
-END;
-$$;
+CREATE POLICY "Allow public read kendaraan" ON public.kendaraan FOR SELECT TO anon, authenticated USING (deleted_at IS NULL);
 
 -- ==============================================================================
 -- SEED DATA AWAL (HARGA RESMI KALIMANTAN TIMUR & 10 KENDARAAN POPULER)
@@ -149,7 +97,3 @@ INSERT INTO public.kendaraan (id_kendaraan, nama_kendaraan, jenis_kendaraan, kon
 ('seed-veh-09', 'MITSUBISHI XPANDER 1.5', 'Mobil', 13.50, true),
 ('seed-veh-10', 'TOYOTA KIJANG INNOVA REBORN', 'Mobil', 11.50, true)
 ON CONFLICT (id_kendaraan) DO UPDATE SET konsumsi_km_per_liter = EXCLUDED.konsumsi_km_per_liter;
-
--- D. METADATA RILIS AWAL MYBBM v1.0
-INSERT INTO public.app_releases (version_name, version_code, apk_url, file_size_mb, changelog, is_latest) VALUES
-('v1.0.0', 1, 'MyBBM-v1.0.apk', 6.05, 'Rilis resmi pertama MyBBM: kalkulasi BBM rute akurat, pencarian SPBU terdekat, dan offline fallback ready.', true);
