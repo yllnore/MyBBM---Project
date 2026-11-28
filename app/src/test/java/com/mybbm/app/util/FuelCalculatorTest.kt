@@ -103,4 +103,18 @@ class FuelCalculatorTest {
         org.junit.Assert.assertTrue(zeroDecEff != null && zeroDecEff <= BigDecimal.ZERO)
         org.junit.Assert.assertTrue(zeroPrice != null && zeroPrice <= BigDecimal.ZERO)
     }
+
+    @Test
+    fun testCalculateFormattedCursorOffset() {
+        // Mengetik di akhir: 900 -> 9000 -> "9.000", kursor harus di paling belakang (5)
+        assertEquals(5, FuelCalculator.calculateFormattedCursorOffset("9000", 4, "9.000"))
+        // Menghapus dari akhir: "9.00" -> "900", kursor di paling belakang (3)
+        assertEquals(3, FuelCalculator.calculateFormattedCursorOffset("9.00", 4, "900"))
+        // Mengetik di tengah: "9.5000" (kursor setelah '5' di indeks 3) -> "95.000", kursor setelah '5' (indeks 2)
+        assertEquals(2, FuelCalculator.calculateFormattedCursorOffset("9.5000", 3, "95.000"))
+        // Desimal koma: "12,35" (kursor di akhir) -> indeks 5
+        assertEquals(5, FuelCalculator.calculateFormattedCursorOffset("12,35", 5, "12,35"))
+        // Input kosong
+        assertEquals(0, FuelCalculator.calculateFormattedCursorOffset("", 0, ""))
+    }
 }

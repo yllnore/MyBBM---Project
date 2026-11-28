@@ -30,10 +30,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -53,9 +55,8 @@ fun EditVehicleDialog(
     var nameInput by remember(vehicle) { mutableStateOf(vehicle?.name ?: "") }
     var typeInput by remember(vehicle) { mutableStateOf(vehicle?.type ?: "Mobil") }
     var efficiencyInput by remember(vehicle) {
-        mutableStateOf(
-            vehicle?.fuelEfficiency?.let { FuelCalculator.formatEfficiency(it) } ?: ""
-        )
+        val initial = vehicle?.fuelEfficiency?.let { FuelCalculator.formatEfficiency(it) } ?: ""
+        mutableStateOf(TextFieldValue(initial, TextRange(initial.length)))
     }
     var errorMessage by remember(vehicle) { mutableStateOf<String?>(null) }
 
@@ -131,7 +132,7 @@ fun EditVehicleDialog(
             DialogInputField(
                 value = efficiencyInput,
                 onValueChange = {
-                    efficiencyInput = FuelCalculator.formatThousandInput(it)
+                    efficiencyInput = formatNumberFieldValue(it, FuelCalculator::formatThousandInput)
                     errorMessage = null
                 },
                 placeholder = "Konsumsi BBM km/L",
@@ -177,7 +178,7 @@ fun EditVehicleDialog(
                         .clickable {
                             val trimmedName = nameInput.trim()
                             val trimmedType = typeInput.trim()
-                            val eff = FuelCalculator.parseEfficiency(efficiencyInput)
+                            val eff = FuelCalculator.parseEfficiency(efficiencyInput.text)
                             val id = vehicle?.id?.takeIf { it.isNotBlank() }
                             if (trimmedName.isEmpty() || trimmedType.isEmpty() || eff == null || eff <= BigDecimal.ZERO) {
                                 errorMessage = "Harap isi nama, jenis kendaraan, dan angka yang valid"

@@ -192,6 +192,36 @@ object FuelCalculator {
     }
 
     /**
+     * Menghitung posisi kursor baru pada [formattedText] berdasarkan posisi kursor [rawCursorIndex]
+     * pada [rawText] agar kursor tetap berada di paling belakang saat mengetik atau pada posisi digit yang sesuai.
+     */
+    fun calculateFormattedCursorOffset(
+        rawText: String,
+        rawCursorIndex: Int,
+        formattedText: String
+    ): Int {
+        val clampedCursor = rawCursorIndex.coerceIn(0, rawText.length)
+        if (clampedCursor == rawText.length) {
+            return formattedText.length
+        }
+
+        val significantBeforeCursor = rawText.substring(0, clampedCursor).count { it.isDigit() || it == ',' }
+        if (significantBeforeCursor == 0) return 0
+
+        var seen = 0
+        for (i in formattedText.indices) {
+            val ch = formattedText[i]
+            if (ch.isDigit() || ch == ',') {
+                seen++
+                if (seen == significantBeforeCursor) {
+                    return i + 1
+                }
+            }
+        }
+        return formattedText.length
+    }
+
+    /**
      * Parsing harga BBM (Rupiah selalu bilangan bulat).
      * Contoh: "10.000" -> BigDecimal("10000"), "12.500" -> BigDecimal("12500")
      */

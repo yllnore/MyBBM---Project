@@ -42,10 +42,12 @@ import androidx.compose.ui.res.painterResource
 import com.mybbm.app.R
 import com.mybbm.app.util.VehicleTypeHelper
 import com.mybbm.app.util.VehicleTypeIcon
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -61,7 +63,7 @@ fun AddVehicleDialog(
 ) {
     var nameInput by remember { mutableStateOf("") }
     var typeInput by remember { mutableStateOf("Mobil") }
-    var efficiencyInput by remember { mutableStateOf("") }
+    var efficiencyInput by remember { mutableStateOf(TextFieldValue("")) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Card Container Utama
@@ -121,7 +123,7 @@ fun AddVehicleDialog(
             DialogInputField(
                 value = efficiencyInput,
                 onValueChange = {
-                    efficiencyInput = FuelCalculator.formatThousandInput(it)
+                    efficiencyInput = formatNumberFieldValue(it, FuelCalculator::formatThousandInput)
                     errorMessage = null
                 },
                 placeholder = "Konsumsi BBM km/L (misal 15.0)",
@@ -167,7 +169,7 @@ fun AddVehicleDialog(
                         .clickable {
                             val trimmedName = nameInput.trim()
                             val trimmedType = typeInput.trim()
-                            val eff = FuelCalculator.parseEfficiency(efficiencyInput)
+                            val eff = FuelCalculator.parseEfficiency(efficiencyInput.text)
                             if (trimmedName.isEmpty() || trimmedType.isEmpty() || eff == null || eff <= BigDecimal.ZERO) {
                                 errorMessage = "Harap isi nama, jenis kendaraan, dan angka yang valid"
                             } else {
@@ -222,6 +224,22 @@ fun AddVehicleDialog(
     }
 }
 
+internal fun formatNumberFieldValue(
+    newValue: TextFieldValue,
+    formatter: (String) -> String
+): TextFieldValue {
+    val formatted = formatter(newValue.text)
+    val cursor = FuelCalculator.calculateFormattedCursorOffset(
+        rawText = newValue.text,
+        rawCursorIndex = newValue.selection.end,
+        formattedText = formatted
+    )
+    return TextFieldValue(
+        text = formatted,
+        selection = TextRange(cursor)
+    )
+}
+
 @Composable
 fun DialogInputField(
     value: String,
@@ -242,34 +260,79 @@ fun DialogInputField(
             color = Color(0xFF090F59)
         ),
         decorationBox = { innerTextField ->
-            Box(
-                modifier = Modifier
-                    .width(260.dp)
-                    .height(heightDp)
-                    .border(
-                        width = 1.dp,
-                        color = Color(0xFFBFB7FA),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .background(Color.White, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                if (value.isEmpty()) {
-                    Text(
-                        text = placeholder,
-                        style = TextStyle(
-                            fontSize = 13.sp,
-                            fontFamily = FontFamily.Default,
-                            fontWeight = FontWeight(400),
-                            color = Color(0xFF8B92B2)
-                        )
-                    )
-                }
-                innerTextField()
-            }
+            DialogInputDecorationBox(
+                isEmpty = value.isEmpty(),
+                placeholder = placeholder,
+                heightDp = heightDp,
+                innerTextField = innerTextField
+            )
         }
     )
+}
+
+@Composable
+fun DialogInputField(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    placeholder: String,
+    heightDp: Dp,
+    keyboardType: KeyboardType = KeyboardType.Text
+) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        singleLine = true,
+        textStyle = TextStyle(
+            fontSize = 14.sp,
+            fontFamily = FontFamily.Default,
+            fontWeight = FontWeight(500),
+            color = Color(0xFF090F59)
+        ),
+        decorationBox = { innerTextField ->
+            DialogInputDecorationBox(
+                isEmpty = value.text.isEmpty(),
+                placeholder = placeholder,
+                heightDp = heightDp,
+                innerTextField = innerTextField
+            )
+        }
+    )
+}
+
+@Composable
+private fun DialogInputDecorationBox(
+    isEmpty: Boolean,
+    placeholder: String,
+    heightDp: Dp,
+    innerTextField: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .width(260.dp)
+            .height(heightDp)
+            .border(
+                width = 1.dp,
+                color = Color(0xFFBFB7FA),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .background(Color.White, RoundedCornerShape(12.dp))
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        if (isEmpty) {
+            Text(
+                text = placeholder,
+                style = TextStyle(
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Default,
+                    fontWeight = FontWeight(400),
+                    color = Color(0xFF8B92B2)
+                )
+            )
+        }
+        innerTextField()
+    }
 }
 
 @Composable

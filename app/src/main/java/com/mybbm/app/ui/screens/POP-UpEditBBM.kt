@@ -29,10 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -50,9 +52,8 @@ fun EditBbmDialog(
 ) {
     var nameInput by remember(fuel) { mutableStateOf(fuel?.name ?: "") }
     var priceInput by remember(fuel) {
-        mutableStateOf(
-            fuel?.pricePerLiter?.let { FuelCalculator.formatThousand(it) } ?: ""
-        )
+        val initial = fuel?.pricePerLiter?.let { FuelCalculator.formatThousand(it) } ?: ""
+        mutableStateOf(TextFieldValue(initial, TextRange(initial.length)))
     }
     var errorMessage by remember(fuel) { mutableStateOf<String?>(null) }
 
@@ -122,7 +123,7 @@ fun EditBbmDialog(
             DialogInputField(
                 value = priceInput,
                 onValueChange = {
-                    priceInput = FuelCalculator.formatDigitsAsThousand(it)
+                    priceInput = formatNumberFieldValue(it, FuelCalculator::formatDigitsAsThousand)
                     errorMessage = null
                 },
                 placeholder = "Harga BBM per Liter",
@@ -167,7 +168,7 @@ fun EditBbmDialog(
                         )
                         .clickable {
                             val trimmedName = nameInput.trim()
-                            val price = FuelCalculator.parseThousand(priceInput)
+                            val price = FuelCalculator.parseThousand(priceInput.text)
                             val id = fuel?.id?.takeIf { it.isNotBlank() }
                             if (trimmedName.isEmpty() || price == null || price <= BigDecimal.ZERO) {
                                 errorMessage = "Harap isi nama dan nilai angka yang valid"
