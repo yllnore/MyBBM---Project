@@ -4,6 +4,8 @@
     android:initialLayout="@layout/widget_trip_calculator"
     android:minHeight="132dp"
     android:minWidth="250dp"
+    android:previewImage="@drawable/widget_trip_calculator_preview"
+    android:previewLayout="@layout/widget_trip_calculator"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen" />
