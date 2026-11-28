@@ -26,6 +26,7 @@ import com.mybbm.app.domain.model.VehicleModel
 import com.mybbm.app.domain.usecase.HitungBiayaUseCase
 import com.mybbm.app.util.DeviceLocationHelper
 import com.mybbm.app.util.FuelIconResolver
+import com.mybbm.app.widget.TripCalculatorWidgetProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -765,6 +766,7 @@ class BbmViewModel(application: Application) : AndroidViewModel(application) {
                 isLoadingSpbu = true
             )
             _calculationResult.value = result
+            TripCalculatorWidgetProvider.updateLatestTrip(getApplication(), result)
 
             // Simpan otomatis ke Room Riwayat (100% Offline) dengan koordinat presisi asli
             val riwayat = RiwayatEntity(

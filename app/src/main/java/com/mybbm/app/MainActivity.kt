@@ -1,5 +1,6 @@
 package com.mybbm.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import com.mybbm.app.ui.MainAppScreen
 import com.mybbm.app.ui.theme.MyBBMTheme
+import com.mybbm.app.viewmodel.AppScreen
 import com.mybbm.app.viewmodel.BbmViewModel
 
 class MainActivity : ComponentActivity() {
@@ -18,6 +20,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) {
+            openCalculatorIfRequested(intent)
+        }
         setContent {
             MyBBMTheme {
                 Surface(
@@ -28,5 +33,22 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openCalculatorIfRequested(intent)
+    }
+
+    private fun openCalculatorIfRequested(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_CALCULATOR, false) == true) {
+            viewModel.resetTripForm()
+            viewModel.navigateTo(AppScreen.HOME)
+        }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_CALCULATOR = "com.mybbm.app.extra.OPEN_CALCULATOR"
     }
 }

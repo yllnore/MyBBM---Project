@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">MyBBM</string>
+    <string name="widget_name">Kalkulator Rute MyBBM</string>
+    <string name="widget_description">Akses cepat untuk menghitung estimasi biaya BBM perjalanan.</string>
+    <string name="widget_empty_label">KALKULATOR RUTE</string>
+    <string name="widget_empty_destination">Mau pergi ke mana?</string>
+    <string name="widget_empty_origin">Mulai hitung estimasi jarak dan biaya BBM</string>
+    <string name="widget_empty_cost">—</string>
+    <string name="widget_empty_distance">Rute baru</string>
+    <string name="widget_empty_action">Hitung rute  →</string>
+    <string name="widget_last_trip_label">PERJALANAN TERAKHIR</string>
+    <string name="widget_new_trip_action">Hitung rute baru  →</string>
 </resources>
